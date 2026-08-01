@@ -1,0 +1,9 @@
+# diesel CLI 用の設定。
+# `DATABASE_URL=data/site.sqlite3 diesel migration run` 等を
+# `crates/topcoat-db` をカレントディレクトリとして実行する前提の設定。
+
+[print_schema]
+file = "src/schema.rs"
+
+[migrations_directory]
+dir = "migrations"
