@@ -8,6 +8,7 @@
 use std::path::Path;
 use std::process::ExitCode;
 
+use topcoat::build::series::write_series_pages;
 use topcoat::build::{write_feeds_and_sitemap, SiteData};
 
 /// サイトのベース URL。
@@ -41,26 +42,26 @@ fn run(command: Command) -> ExitCode {
 }
 
 fn run_build() -> ExitCode {
-    // TODO(#4, #6, #9, #10, #11): SQLite + Diesel 経由で Work/Tag/Series を取得する処理に
+    // TODO(#4, #6, #9, #11): SQLite + Diesel 経由で Work/Tag/Series を取得する処理に
     // 差し替える。現時点ではそれらの前提 issue が未マージのため、空データで動作確認する。
     let data = SiteData::default();
+    let dist_dir = Path::new("dist");
 
-    match write_feeds_and_sitemap(
-        Path::new("dist"),
-        SITE_BASE_URL,
-        SITE_TITLE,
-        SITE_DESCRIPTION,
-        &data,
-    ) {
-        Ok(()) => {
-            println!("wrote dist/feed.xml, dist/feed.json, dist/sitemap.xml");
-            ExitCode::SUCCESS
-        }
-        Err(err) => {
-            eprintln!("build failed: {err}");
-            ExitCode::FAILURE
-        }
+    if let Err(err) =
+        write_feeds_and_sitemap(dist_dir, SITE_BASE_URL, SITE_TITLE, SITE_DESCRIPTION, &data)
+    {
+        eprintln!("build failed: {err}");
+        return ExitCode::FAILURE;
     }
+    println!("wrote dist/feed.xml, dist/feed.json, dist/sitemap.xml");
+
+    if let Err(err) = write_series_pages(dist_dir, &data.works, &data.series) {
+        eprintln!("build failed: {err}");
+        return ExitCode::FAILURE;
+    }
+    println!("wrote dist/series/<slug>/index.html for each series");
+
+    ExitCode::SUCCESS
 }
 
 fn main() -> ExitCode {
