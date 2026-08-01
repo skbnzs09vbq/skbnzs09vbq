@@ -1,16 +1,11 @@
-[package]
-name = "topcoat"
-version = "0.1.0"
+[workspace]
+resolver = "2"
+members = ["crates/topcoat", "crates/topcoat-db", "crates/topcoat-render"]
+
+[workspace.package]
 edition = "2021"
 
-[lib]
-name = "topcoat"
-path = "src/lib.rs"
-
-[[bin]]
-name = "topcoat"
-path = "src/main.rs"
-
-[dependencies]
+[workspace.dependencies]
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+chrono = { version = "0.4", features = ["serde"] }
