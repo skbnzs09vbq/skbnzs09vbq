@@ -2,9 +2,12 @@
 //!
 //! 本来このモジュールの骨格は #11 (SSG ビルドエントリーポイント実装) で作成され、
 //! 全 Work/Tag/Series 取得フックは #4 (SQLite + Diesel 導入) / #6 (Work テーブル) /
-//! #9 (タグ別一覧) / #10 (シリーズ別一覧) で実装される想定だが、issue #15 着手時点で
+//! #9 (タグ別一覧) / #10 (シリーズ別一覧) で実装される想定だが、issue #15/#12 着手時点で
 //! いずれも未マージのため、本 issue のスコープ内で完結させるために最小限の
 //! [`SiteData`] 受け渡しインターフェースを暫定的に用意している。
+//!
+//! [`write_feeds_and_sitemap`] (feed/sitemap 生成) に加え、[`write_work_detail_pages`]
+//! (作品詳細静的ページ `dist/works/<slug>/index.html` 生成) も同様の入口として提供する。
 //!
 //! 後続 issue のマージ後にやること:
 //! - [`SiteData`] を Diesel 経由の実データ取得結果から構築する処理に差し替える
@@ -12,6 +15,7 @@
 
 pub mod feed;
 pub mod sitemap;
+pub mod work_detail;
 
 use std::fs;
 use std::io;
@@ -22,6 +26,7 @@ use feed::{generate_json_feed, generate_rss, FeedMeta, FeedWork};
 use sitemap::{
     generate_sitemap, SitemapInput, SitemapSeriesEntry, SitemapTagEntry, SitemapWorkEntry,
 };
+pub use work_detail::write_work_detail_pages;
 
 /// `topcoat build` が feed/sitemap 生成に必要とする全データ。
 ///
