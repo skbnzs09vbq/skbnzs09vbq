@@ -4,7 +4,8 @@
 //! 全 Work/Tag/Series 取得フックは #4 (SQLite + Diesel 導入) / #6 (Work テーブル) /
 //! #9 (タグ別一覧) / #10 (シリーズ別一覧) で実装される想定だが、issue #15 着手時点で
 //! いずれも未マージのため、本 issue のスコープ内で完結させるために最小限の
-//! [`SiteData`] 受け渡しインターフェースを暫定的に用意している。
+//! [`SiteData`] 受け渡しインターフェースを暫定的に用意している。issue #13 (OG 画像生成) も
+//! 同じ前例 (#15) を踏襲し、[`SiteData`] 経由で [`write_og_images`] をフックしている。
 //!
 //! 後続 issue のマージ後にやること:
 //! - [`SiteData`] を Diesel 経由の実データ取得結果から構築する処理に差し替える
@@ -12,6 +13,7 @@
 
 pub mod feed;
 pub mod search_index;
+pub mod series;
 pub mod sitemap;
 
 use std::fs;
@@ -24,6 +26,7 @@ use search_index::{generate_search_index, SearchIndexEntry};
 use sitemap::{
     generate_sitemap, SitemapInput, SitemapSeriesEntry, SitemapTagEntry, SitemapWorkEntry,
 };
+use topcoat_render::OgWork;
 
 /// `topcoat build` が feed/sitemap/search-index 生成に必要とする全データ。
 ///
@@ -114,6 +117,25 @@ pub fn write_feeds_and_sitemap(
     fs::write(dist_dir.join("feed.json"), json_feed)?;
     fs::write(dist_dir.join("sitemap.xml"), sitemap_xml)?;
     fs::write(dist_dir.join("search-index.json"), search_index_json)?;
+
+    Ok(())
+}
+
+/// `dist_dir/works/<slug>/og.png` を各 Work ごとに書き出す。
+///
+/// `topcoat_render::OgWork` へのマッピングは呼び出し側 (この関数) が行う
+/// ([`FeedWork`] と同じ「Work → 専用 DTO へのマッピングは呼び出し側が行う」パターン)。
+pub fn write_og_images(dist_dir: &Path, data: &SiteData) -> io::Result<()> {
+    let og_works: Vec<OgWork> = data
+        .works
+        .iter()
+        .map(|work| OgWork {
+            slug: work.slug.clone(),
+            title: work.title.clone(),
+        })
+        .collect();
+
+    topcoat_render::write_og_images(dist_dir, &og_works)?;
 
     Ok(())
 }

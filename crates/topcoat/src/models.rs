@@ -23,6 +23,8 @@ pub struct Work {
     /// 所属するシリーズの表示名。未所属の場合は `None`。
     /// 全文検索インデックス (`search-index.json`) 生成に使う。
     pub series: Option<String>,
+    /// 所属する [`Series`] の `slug` (FK)。未所属の場合は `None`。
+    pub series_slug: Option<String>,
 }
 
 impl Work {
