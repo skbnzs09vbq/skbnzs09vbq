@@ -57,6 +57,18 @@ fn explicit_related_works(conn: &mut SqliteConnection, work_id: i32) -> QueryRes
         .load::<(i32, String, String, String)>(conn)
 }
 
+/// 対象 `work_id` に紐づく `tag_id` 一覧を取得する。
+///
+/// `shared_tag_counts_between_many` と `shared_tag_fallback` の両方が、共有タグ数算出の
+/// 起点として同じ「対象 Work のタグID一覧取得」を必要とするため、共通ヘルパーとして
+/// 切り出している（空判定・早期リターンは呼び出し側でそのまま行う）。
+fn work_tag_ids(conn: &mut SqliteConnection, work_id: i32) -> QueryResult<Vec<i32>> {
+    work_tags::table
+        .filter(work_tags::work_id.eq(work_id))
+        .select(work_tags::tag_id)
+        .load(conn)
+}
+
 /// `work_id` と `related_ids` それぞれとの間の共有タグ数（`work_tags` の積集合サイズ）を
 /// 1クエリで一括計算する。
 ///
@@ -73,10 +85,7 @@ fn shared_tag_counts_between_many(
         return Ok(HashMap::new());
     }
 
-    let tag_ids: Vec<i32> = work_tags::table
-        .filter(work_tags::work_id.eq(work_id))
-        .select(work_tags::tag_id)
-        .load(conn)?;
+    let tag_ids: Vec<i32> = work_tag_ids(conn, work_id)?;
 
     if tag_ids.is_empty() {
         return Ok(HashMap::new());
@@ -101,10 +110,7 @@ fn shared_tag_fallback(
     work_id: i32,
     limit: i64,
 ) -> QueryResult<Vec<RankedWorkRow>> {
-    let tag_ids: Vec<i32> = work_tags::table
-        .filter(work_tags::work_id.eq(work_id))
-        .select(work_tags::tag_id)
-        .load(conn)?;
+    let tag_ids: Vec<i32> = work_tag_ids(conn, work_id)?;
 
     if tag_ids.is_empty() {
         return Ok(Vec::new());
