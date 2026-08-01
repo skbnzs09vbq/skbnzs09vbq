@@ -141,6 +141,8 @@ mod tests {
             tags: vec![],
             series: None,
             series_slug: Some(series_slug.to_string()),
+            params: serde_json::Value::Null,
+            related_works: vec![],
         }
     }
 

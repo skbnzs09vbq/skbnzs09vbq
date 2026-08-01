@@ -2,10 +2,13 @@
 //!
 //! 本来このモジュールの骨格は #11 (SSG ビルドエントリーポイント実装) で作成され、
 //! 全 Work/Tag/Series 取得フックは #4 (SQLite + Diesel 導入) / #6 (Work テーブル) /
-//! #9 (タグ別一覧) / #10 (シリーズ別一覧) で実装される想定だが、issue #15 着手時点で
+//! #9 (タグ別一覧) / #10 (シリーズ別一覧) で実装される想定だが、issue #15/#12 着手時点で
 //! いずれも未マージのため、本 issue のスコープ内で完結させるために最小限の
 //! [`SiteData`] 受け渡しインターフェースを暫定的に用意している。issue #13 (OG 画像生成) も
 //! 同じ前例 (#15) を踏襲し、[`SiteData`] 経由で [`write_og_images`] をフックしている。
+//!
+//! [`write_feeds_and_sitemap`] (feed/sitemap 生成) に加え、[`write_work_detail_pages`]
+//! (作品詳細静的ページ `dist/works/<slug>/index.html` 生成) も同様の入口として提供する。
 //!
 //! 後続 issue のマージ後にやること:
 //! - [`SiteData`] を Diesel 経由の実データ取得結果から構築する処理に差し替える
@@ -15,6 +18,7 @@ pub mod feed;
 pub mod search_index;
 pub mod series;
 pub mod sitemap;
+pub mod work_detail;
 
 use std::fs;
 use std::io;
@@ -26,6 +30,7 @@ use search_index::{generate_search_index, SearchIndexEntry};
 use sitemap::{
     generate_sitemap, SitemapInput, SitemapSeriesEntry, SitemapTagEntry, SitemapWorkEntry,
 };
+pub use work_detail::write_work_detail_pages;
 use topcoat_render::OgWork;
 
 /// `topcoat build` が feed/sitemap/search-index 生成に必要とする全データ。
@@ -107,8 +112,8 @@ pub fn write_feeds_and_sitemap(
             slug: work.slug.clone(),
             title: work.title.clone(),
             description: work.description.clone(),
-            tags: work.tags.clone(),
-            series: work.series.clone(),
+            tags: work.tags.iter().map(|tag| tag.name.clone()).collect(),
+            series: work.series.as_ref().map(|series| series.name.clone()),
         })
         .collect();
     let search_index_json = generate_search_index(&search_index_entries);
