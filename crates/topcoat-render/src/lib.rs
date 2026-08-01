@@ -1,13 +1,22 @@
 //! `topcoat-render` — `topcoat` のテンプレートレンダリング・OG 画像生成を担うライブラリ crate。
 //!
-//! 現時点では作品詳細ページ (`work_detail`) のテンプレートレンダリングのみを実装している。
-//! OG 画像生成は別 issue (#13) の範囲。
+//! 作品詳細ページ (`work_detail`) のテンプレートレンダリングと、OG 画像生成
+//! (`og_image` / `raster` / `svg_template`) の両方を実装している。
+//! `topcoat` 側の `xml_writer` (XML エスケープ処理) には依存しない設計とする
+//! (SVG 用のエスケープ処理は [`svg_template`] 内に小さく独立実装している)。
 
+pub mod og_image;
+pub mod raster;
+pub mod svg_template;
 pub mod work_detail;
 
 use std::path::PathBuf;
 
 use tera::Tera;
+
+pub use og_image::{generate_og_image, write_og_images, OgWork};
+pub use raster::{rasterize_svg, RenderError};
+pub use svg_template::build_og_svg;
 
 /// `templates/**/*.tera` をロードした [`Tera`] インスタンスを構築する。
 ///

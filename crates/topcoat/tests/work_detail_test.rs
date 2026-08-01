@@ -24,6 +24,7 @@ fn work(slug: &str, title: &str) -> Work {
             slug: "series-1".to_string(),
             name: "シリーズ1".to_string(),
         }),
+        series_slug: Some("series-1".to_string()),
         params: serde_json::json!({ "seed": 1 }),
         related_works: vec![RelatedWorkRef {
             slug: "other-work".to_string(),

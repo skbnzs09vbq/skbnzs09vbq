@@ -25,10 +25,15 @@ pub struct Work {
     /// フィード/サイトマップ生成時に `created_at` へフォールバックする。
     pub updated_at: Option<String>,
     /// この Work に紐づくタグ一覧。#9 (タグ別一覧) マージ後に実データへ差し替える想定の暫定フィールド。
+    /// 全文検索インデックス (`search-index.json`) 生成時には表示名 (`name`) のみ抽出して使う。
     pub tags: Vec<Tag>,
     /// この Work が属するシリーズ。存在しない場合は `None`。
     /// #10 (シリーズ別一覧) マージ後に実データへ差し替える想定の暫定フィールド。
+    /// 全文検索インデックス (`search-index.json`) 生成時には表示名 (`name`) のみ抽出して使う。
     pub series: Option<Series>,
+    /// 所属する [`Series`] の `slug` (FK)。シリーズ別一覧ページの絞り込みに使う。
+    /// 未所属の場合は `None`。
+    pub series_slug: Option<String>,
     /// 作品の生成パラメータ。#6 側でスキーマが未確定のため、本 issue では
     /// `serde_json::Value` による自由形式の暫定表現とする。
     pub params: serde_json::Value,

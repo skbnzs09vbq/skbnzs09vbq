@@ -1,15 +1,18 @@
 //! `topcoat` — 自作 SSG (Static Site Generator) の CLI エントリーポイント。
 //!
-//! `build` サブコマンドの骨格は #11 (SSG ビルドエントリーポイント実装) で作成される想定だが、
-//! issue #15 (feed/sitemap 生成)・#12 (作品詳細静的ページ生成) の動作確認のため、それぞれの
-//! スコープ内で最小限の `build` サブコマンドを暫定的に用意している。#11 のマージ後は、
-//! そちらのビルドパイプラインに [`topcoat::build::write_feeds_and_sitemap`] /
-//! [`topcoat::build::write_work_detail_pages`] の呼び出しを組み込む形に差し替える。
+//! issue #15 (feed/sitemap 生成)・#12 (作品詳細静的ページ生成)・#13 (OG 画像生成) の動作確認の
+//! ため、それぞれのスコープ内で最小限の `build` サブコマンドを暫定的に用意している。#11 の
+//! マージ後は、そちらのビルドパイプラインに [`topcoat::build::write_feeds_and_sitemap`] /
+//! [`topcoat::build::write_work_detail_pages`] / [`topcoat::build::write_og_images`] の
+//! 呼び出しを組み込む形に差し替える。
 
 use std::path::Path;
 use std::process::ExitCode;
 
-use topcoat::build::{write_feeds_and_sitemap, write_work_detail_pages, SiteData};
+use topcoat::build::series::write_series_pages;
+use topcoat::build::{
+    write_feeds_and_sitemap, write_og_images, write_work_detail_pages, SiteData,
+};
 
 /// サイトのベース URL。
 ///
@@ -42,7 +45,7 @@ fn run(command: Command) -> ExitCode {
 }
 
 fn run_build() -> ExitCode {
-    // TODO(#4, #6, #9, #10, #11): SQLite + Diesel 経由で Work/Tag/Series を取得する処理に
+    // TODO(#4, #6, #9, #11): SQLite + Diesel 経由で Work/Tag/Series を取得する処理に
     // 差し替える。現時点ではそれらの前提 issue が未マージのため、空データで動作確認する。
     let data = SiteData::default();
     let dist_dir = Path::new("dist");
@@ -53,7 +56,13 @@ fn run_build() -> ExitCode {
         eprintln!("build failed: {err}");
         return ExitCode::FAILURE;
     }
-    println!("wrote dist/feed.xml, dist/feed.json, dist/sitemap.xml");
+    println!("wrote dist/feed.xml, dist/feed.json, dist/sitemap.xml, dist/search-index.json");
+
+    if let Err(err) = write_series_pages(dist_dir, &data.works, &data.series) {
+        eprintln!("build failed: {err}");
+        return ExitCode::FAILURE;
+    }
+    println!("wrote dist/series/<slug>/index.html for each series");
 
     let tera = match topcoat_render::build_tera() {
         Ok(tera) => tera,
@@ -71,6 +80,12 @@ fn run_build() -> ExitCode {
         "wrote dist/works/<slug>/index.html for {} work(s)",
         data.works.len()
     );
+
+    if let Err(err) = write_og_images(dist_dir, &data) {
+        eprintln!("build failed: {err}");
+        return ExitCode::FAILURE;
+    }
+    println!("wrote dist/works/<slug>/og.png");
 
     ExitCode::SUCCESS
 }

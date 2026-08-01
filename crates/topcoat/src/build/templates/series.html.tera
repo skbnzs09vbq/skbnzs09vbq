@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>{{ series_name }} | topcoat</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root { color-scheme: dark; }
+  body {
+    margin: 0;
+    padding: 2rem 1.5rem 4rem;
+    background: #14151a;
+    color: #e6e6ea;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    line-height: 1.6;
+  }
+  main { max-width: 40rem; margin: 0 auto; }
+  h1 { font-size: 1.5rem; margin-bottom: 2rem; }
+  ul { list-style: none; margin: 0; padding: 0; }
+  li {
+    padding: 1rem 0;
+    border-bottom: 1px solid #2a2b33;
+  }
+  li:last-child { border-bottom: none; }
+  li a {
+    color: #8ab4ff;
+    text-decoration: none;
+    font-size: 1.1rem;
+  }
+  li a:hover { text-decoration: underline; }
+  li p {
+    margin: 0.4rem 0 0;
+    color: #a4a5b0;
+    font-size: 0.95rem;
+  }
+  .empty { color: #a4a5b0; }
+</style>
+</head>
+<body>
+<main>
+  <h1>{{ series_name }}</h1>
+  {% if works | length > 0 %}
+  <ul>
+    {% for work in works %}
+    <li>
+      <a href="/works/{{ work.slug }}/">{{ work.title }}</a>
+      <p>{{ work.description }}</p>
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p class="empty">このシリーズにはまだ作品がありません。</p>
+  {% endif %}
+</main>
+</body>
+</html>
