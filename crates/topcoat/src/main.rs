@@ -54,7 +54,7 @@ fn run_build() -> ExitCode {
         eprintln!("build failed: {err}");
         return ExitCode::FAILURE;
     }
-    println!("wrote dist/feed.xml, dist/feed.json, dist/sitemap.xml");
+    println!("wrote dist/feed.xml, dist/feed.json, dist/sitemap.xml, dist/search-index.json");
 
     if let Err(err) = write_series_pages(dist_dir, &data.works, &data.series) {
         eprintln!("build failed: {err}");

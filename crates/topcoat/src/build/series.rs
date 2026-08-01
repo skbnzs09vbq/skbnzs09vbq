@@ -138,6 +138,8 @@ mod tests {
             description: format!("Description {slug}"),
             created_at: created_at.to_string(),
             updated_at: None,
+            tags: vec![],
+            series: None,
             series_slug: Some(series_slug.to_string()),
         }
     }

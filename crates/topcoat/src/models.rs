@@ -18,6 +18,11 @@ pub struct Work {
     /// RFC3339 (UTC) 形式。未設定 (初期シード投入直後等) の場合は
     /// フィード/サイトマップ生成時に `created_at` へフォールバックする。
     pub updated_at: Option<String>,
+    /// 付与されたタグの表示名一覧。全文検索インデックス (`search-index.json`) 生成に使う。
+    pub tags: Vec<String>,
+    /// 所属するシリーズの表示名。未所属の場合は `None`。
+    /// 全文検索インデックス (`search-index.json`) 生成に使う。
+    pub series: Option<String>,
     /// 所属する [`Series`] の `slug` (FK)。未所属の場合は `None`。
     pub series_slug: Option<String>,
 }
