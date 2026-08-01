@@ -20,6 +20,22 @@ pub struct Work {
     pub updated_at: Option<String>,
 }
 
+impl Work {
+    /// `updated_at` があればそれを、なければ `created_at` を返す。
+    pub fn effective_updated_at(&self) -> &str {
+        effective_updated_at(self.updated_at.as_deref(), &self.created_at)
+    }
+}
+
+/// `updated_at` があればそれを、なければ `created_at` を返す。
+///
+/// [`Work`] / `build::feed::FeedWork` のいずれも「`updated_at` が無ければ `created_at` に
+/// フォールバックする」という同一のルールを持つため、両者から共通で呼び出せる純粋関数として
+/// 切り出している。
+pub fn effective_updated_at<'a>(updated_at: Option<&'a str>, created_at: &'a str) -> &'a str {
+    updated_at.unwrap_or(created_at)
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Tag {
     pub slug: String,

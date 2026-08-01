@@ -8,6 +8,21 @@ const WEEKDAY_NAMES: [&str; 7] = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat
 const MONTH_NAMES: [&str; 12] = [
     "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
 ];
+/// 平年における各月の最大日数 (`DAYS_IN_MONTH[month - 1]`)。2月はうるう年かどうかで別途判定する。
+const DAYS_IN_MONTH: [u32; 12] = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+
+fn is_leap_year(year: i32) -> bool {
+    (year % 4 == 0 && year % 100 != 0) || year % 400 == 0
+}
+
+/// `year`/`month` (1-indexed) におけるその月の最大日数。`month` は `1..=12` を想定する。
+fn max_day_in_month(year: i32, month: u32) -> u32 {
+    if month == 2 && is_leap_year(year) {
+        29
+    } else {
+        DAYS_IN_MONTH[(month - 1) as usize]
+    }
+}
 
 /// `YYYY-MM-DDTHH:MM:SS[.fff]Z` 形式の RFC3339 (UTC) 文字列を
 /// `Wed, 01 Jan 2026 00:00:00 GMT` 形式の RFC 822 文字列に変換する。
@@ -40,7 +55,10 @@ pub fn rfc3339_to_rfc822(input: &str) -> Option<String> {
     }
     let second: u32 = input.get(17..19)?.parse().ok()?;
 
-    if !(1..=12).contains(&month) || !(1..=31).contains(&day) {
+    if !(1..=12).contains(&month) {
+        return None;
+    }
+    if day < 1 || day > max_day_in_month(year, month) {
         return None;
     }
 
@@ -103,5 +121,29 @@ mod tests {
     fn rejects_malformed_input() {
         assert_eq!(rfc3339_to_rfc822("not-a-date"), None);
         assert_eq!(rfc3339_to_rfc822(""), None);
+    }
+
+    #[test]
+    fn rejects_nonexistent_day_in_month() {
+        // 2026年は平年なので 2/30, 2/29 は存在しない
+        assert_eq!(rfc3339_to_rfc822("2026-02-30T00:00:00Z"), None);
+        assert_eq!(rfc3339_to_rfc822("2026-02-29T00:00:00Z"), None);
+        // 4月は30日までしかない
+        assert_eq!(rfc3339_to_rfc822("2026-04-31T00:00:00Z"), None);
+    }
+
+    #[test]
+    fn rejects_leap_day_in_non_leap_year() {
+        // 2100年はうるう年ではない (400 で割り切れない世紀年)
+        assert_eq!(rfc3339_to_rfc822("2100-02-29T00:00:00Z"), None);
+    }
+
+    #[test]
+    fn accepts_leap_day_in_leap_year_divisible_by_400() {
+        // 2000年は 400 で割り切れるためうるう年
+        assert_eq!(
+            rfc3339_to_rfc822("2000-02-29T00:00:00Z"),
+            Some("Tue, 29 Feb 2000 00:00:00 GMT".to_string())
+        );
     }
 }

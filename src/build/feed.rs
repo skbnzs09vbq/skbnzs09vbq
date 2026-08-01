@@ -29,7 +29,7 @@ pub struct FeedWork {
 impl FeedWork {
     /// `updated_at` があればそれを、なければ `created_at` を返す。
     fn effective_updated_at(&self) -> &str {
-        self.updated_at.as_deref().unwrap_or(&self.created_at)
+        crate::models::effective_updated_at(self.updated_at.as_deref(), &self.created_at)
     }
 }
 

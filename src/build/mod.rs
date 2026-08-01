@@ -74,11 +74,7 @@ pub fn write_feeds_and_sitemap(
             .iter()
             .map(|work| SitemapWorkEntry {
                 slug: work.slug.clone(),
-                lastmod: Some(
-                    work.updated_at
-                        .clone()
-                        .unwrap_or_else(|| work.created_at.clone()),
-                ),
+                lastmod: Some(work.effective_updated_at().to_string()),
             })
             .collect(),
         tags: data
