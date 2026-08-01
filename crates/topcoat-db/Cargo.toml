@@ -1,0 +1,12 @@
+[package]
+name = "topcoat-db"
+version = "0.1.0"
+edition.workspace = true
+
+[dependencies]
+diesel.workspace = true
+diesel_migrations.workspace = true
+libsqlite3-sys.workspace = true
+
+[dev-dependencies]
+tempfile = "3"
