@@ -47,3 +47,15 @@ pub struct Series {
     pub slug: String,
     pub name: String,
 }
+
+/// Work に紐づくバージョン (更新履歴) 1件分の情報。
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Version {
+    /// 対象の Work の ID (DB 上の主キー)。
+    pub work_id: i64,
+    /// バージョン表記 (例: "v1.0")。
+    pub version: String,
+    pub note: String,
+    /// RFC3339 (UTC) 形式
+    pub created_at: String,
+}
