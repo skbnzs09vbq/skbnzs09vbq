@@ -5,6 +5,7 @@
 //! マイグレーション自動適用の疎通確認までをスコープとする。
 //! Work/Tag 等の実テーブル定義・エンティティ実装は後続 issue（#6 等）で行う。
 
+pub mod models;
 pub mod schema;
 
 use std::fs;
@@ -59,8 +60,6 @@ pub fn establish_connection_at(db_path: &Path) -> ConnectionResult<SqliteConnect
 /// 埋め込まれたマイグレーション（`MIGRATIONS`）を DB に適用する。
 ///
 /// 未適用のマイグレーションのみが適用されるため、複数回呼び出しても安全（冪等）。
-/// 本 issue時点ではマイグレーションファイル自体が存在しない（テーブル未定義）ため、
-/// 実質的には「マイグレーション管理テーブルの初期化のみ行われて即座に成功する」動作になる。
 pub fn run_migrations(
     connection: &mut SqliteConnection,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>> {
