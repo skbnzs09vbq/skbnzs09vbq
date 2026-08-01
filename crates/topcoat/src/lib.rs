@@ -13,6 +13,10 @@
 //! そのため [`models`] は Diesel モデルではなく暫定的なプレーンな struct として
 //! 定義している。上記 issue のマージ後は、フィールド名・型の互換性を保ったまま
 //! Diesel モデルに差し替える想定。
+//!
+//! 追記 (issue #9 時点): タグ別一覧ページ生成 (`dist/tags/<slug>/index.html`) は
+//! [`build::tags`] として実装済み。#2 (Tag⇔Work 多対多)・#6・#11 は依然未マージのため、
+//! 上記の「暫定モデル/差し替え想定」は変わらず有効。
 
 pub mod build;
 pub mod models;
