@@ -53,7 +53,9 @@ fn run_build() -> ExitCode {
         &data,
     ) {
         Ok(()) => {
-            println!("wrote dist/feed.xml, dist/feed.json, dist/sitemap.xml");
+            println!(
+                "wrote dist/feed.xml, dist/feed.json, dist/sitemap.xml, dist/search-index.json"
+            );
             ExitCode::SUCCESS
         }
         Err(err) => {

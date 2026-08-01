@@ -11,6 +11,7 @@
 //! - `main.rs` 側のプレースホルダ (`SiteData::default()` 相当) を実データ取得呼び出しに差し替える
 
 pub mod feed;
+pub mod search_index;
 pub mod sitemap;
 
 use std::fs;
@@ -19,11 +20,12 @@ use std::path::Path;
 
 use crate::models::{Series, Tag, Work};
 use feed::{generate_json_feed, generate_rss, FeedMeta, FeedWork};
+use search_index::{generate_search_index, SearchIndexEntry};
 use sitemap::{
     generate_sitemap, SitemapInput, SitemapSeriesEntry, SitemapTagEntry, SitemapWorkEntry,
 };
 
-/// `topcoat build` が feed/sitemap 生成に必要とする全データ。
+/// `topcoat build` が feed/sitemap/search-index 生成に必要とする全データ。
 ///
 /// `works` は新着順 (`created_at` 降順) に並んでいる前提。
 #[derive(Debug, Clone, Default)]
@@ -33,7 +35,8 @@ pub struct SiteData {
     pub series: Vec<Series>,
 }
 
-/// `dist/feed.xml` / `dist/feed.json` / `dist/sitemap.xml` を `dist_dir` 配下に書き出す。
+/// `dist/feed.xml` / `dist/feed.json` / `dist/sitemap.xml` / `dist/search-index.json` を
+/// `dist_dir` 配下に書き出す。
 ///
 /// `site_title` / `site_description` / `base_url` はサイト全体の設定値であり、
 /// 呼び出し側 (`main.rs`) が一元的に管理する。
@@ -94,9 +97,23 @@ pub fn write_feeds_and_sitemap(
     };
     let sitemap_xml = generate_sitemap(&sitemap_input);
 
+    let search_index_entries: Vec<SearchIndexEntry> = data
+        .works
+        .iter()
+        .map(|work| SearchIndexEntry {
+            slug: work.slug.clone(),
+            title: work.title.clone(),
+            description: work.description.clone(),
+            tags: work.tags.clone(),
+            series: work.series.clone(),
+        })
+        .collect();
+    let search_index_json = generate_search_index(&search_index_entries);
+
     fs::write(dist_dir.join("feed.xml"), rss_xml)?;
     fs::write(dist_dir.join("feed.json"), json_feed)?;
     fs::write(dist_dir.join("sitemap.xml"), sitemap_xml)?;
+    fs::write(dist_dir.join("search-index.json"), search_index_json)?;
 
     Ok(())
 }
