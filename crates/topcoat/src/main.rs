@@ -1,14 +1,15 @@
 //! `topcoat` — 自作 SSG (Static Site Generator) の CLI エントリーポイント。
 //!
 //! `build` サブコマンドの骨格は #11 (SSG ビルドエントリーポイント実装) で作成される想定だが、
-//! issue #15 (feed/sitemap 生成) の動作確認のため、issue #15 のスコープ内で最小限の `build`
-//! サブコマンドを暫定的に用意している。#11 のマージ後は、そちらのビルドパイプラインに
-//! [`topcoat::build::write_feeds_and_sitemap`] の呼び出しを組み込む形に差し替える。
+//! issue #15 (feed/sitemap 生成)・#13 (OG 画像生成) の動作確認のため、それぞれのスコープ内で
+//! 最小限の `build` サブコマンドを暫定的に用意している。#11 のマージ後は、そちらのビルド
+//! パイプラインに [`topcoat::build::write_feeds_and_sitemap`] /
+//! [`topcoat::build::write_og_images`] の呼び出しを組み込む形に差し替える。
 
 use std::path::Path;
 use std::process::ExitCode;
 
-use topcoat::build::{write_feeds_and_sitemap, SiteData};
+use topcoat::build::{write_feeds_and_sitemap, write_og_images, SiteData};
 
 /// サイトのベース URL。
 ///
@@ -45,22 +46,25 @@ fn run_build() -> ExitCode {
     // 差し替える。現時点ではそれらの前提 issue が未マージのため、空データで動作確認する。
     let data = SiteData::default();
 
-    match write_feeds_and_sitemap(
+    if let Err(err) = write_feeds_and_sitemap(
         Path::new("dist"),
         SITE_BASE_URL,
         SITE_TITLE,
         SITE_DESCRIPTION,
         &data,
     ) {
-        Ok(()) => {
-            println!("wrote dist/feed.xml, dist/feed.json, dist/sitemap.xml");
-            ExitCode::SUCCESS
-        }
-        Err(err) => {
-            eprintln!("build failed: {err}");
-            ExitCode::FAILURE
-        }
+        eprintln!("build failed: {err}");
+        return ExitCode::FAILURE;
     }
+    println!("wrote dist/feed.xml, dist/feed.json, dist/sitemap.xml");
+
+    if let Err(err) = write_og_images(Path::new("dist"), &data) {
+        eprintln!("build failed: {err}");
+        return ExitCode::FAILURE;
+    }
+    println!("wrote dist/works/<slug>/og.png");
+
+    ExitCode::SUCCESS
 }
 
 fn main() -> ExitCode {
