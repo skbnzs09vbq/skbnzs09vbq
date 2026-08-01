@@ -45,7 +45,9 @@ fn run_build() -> ExitCode {
 
     match build::run(Path::new("dist"), &config) {
         Ok(()) => {
-            println!("wrote dist/index.html, dist/feed.xml, dist/feed.json, dist/sitemap.xml");
+            println!(
+                "wrote dist/index.html, dist/feed.xml, dist/feed.json, dist/sitemap.xml, dist/works/<slug>/og.png"
+            );
             ExitCode::SUCCESS
         }
         Err(err) => {

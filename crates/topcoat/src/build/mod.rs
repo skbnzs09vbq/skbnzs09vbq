@@ -1,7 +1,8 @@
 //! `topcoat build` のビルドパイプライン。
 //!
 //! マイグレーション適用 → topcoat-db 経由の Work/Tag/Series/Version 取得 → Tera による
-//! レンダリング → `dist/` 配下への書き出し、までの一連の処理を [`run`] に配線している。
+//! レンダリング → feed/sitemap 生成 → OG 画像生成 → `dist/` 配下への書き出し、までの
+//! 一連の処理を [`run`] に配線している。
 //!
 //! Work/Tag/Series/Version の実テーブル定義は #6 (Work テーブル) / #9 (タグ別一覧) /
 //! #10 (シリーズ別一覧) が未マージのため、[`fetch_site_data`] は現時点では空データを
@@ -20,6 +21,7 @@ use feed::{generate_json_feed, generate_rss, FeedMeta, FeedWork};
 use sitemap::{
     generate_sitemap, SitemapInput, SitemapSeriesEntry, SitemapTagEntry, SitemapWorkEntry,
 };
+use topcoat_render::OgWork;
 
 /// `topcoat build` が feed/sitemap/ページ生成に必要とする全データ。
 ///
@@ -47,7 +49,8 @@ pub struct BuildConfig {
 }
 
 /// マイグレーション適用 → (プレースホルダの) Work/Tag/Series/Version 取得 → レンダリング →
-/// `dist_dir` 配下への書き出し、までの一連のビルドパイプラインを実行する。
+/// feed/sitemap 生成 → OG 画像生成 → `dist_dir` 配下への書き出し、までの一連のビルド
+/// パイプラインを実行する。
 pub fn run(dist_dir: &Path, config: &BuildConfig) -> io::Result<()> {
     apply_migrations(&config.db_path).map_err(io::Error::other)?;
 
@@ -64,7 +67,9 @@ pub fn run(dist_dir: &Path, config: &BuildConfig) -> io::Result<()> {
         &config.site_title,
         &config.site_description,
         &data,
-    )
+    )?;
+
+    write_og_images(dist_dir, &data)
 }
 
 /// `db_path` の SQLite ファイルへの接続を確立し、埋め込みマイグレーションを適用する。
@@ -147,6 +152,25 @@ pub fn write_feeds_and_sitemap(
     fs::write(dist_dir.join("feed.xml"), rss_xml)?;
     fs::write(dist_dir.join("feed.json"), json_feed)?;
     fs::write(dist_dir.join("sitemap.xml"), sitemap_xml)?;
+
+    Ok(())
+}
+
+/// `dist_dir/works/<slug>/og.png` を各 Work ごとに書き出す。
+///
+/// `topcoat_render::OgWork` へのマッピングは呼び出し側 (この関数) が行う
+/// ([`FeedWork`] と同じ「Work → 専用 DTO へのマッピングは呼び出し側が行う」パターン)。
+pub fn write_og_images(dist_dir: &Path, data: &SiteData) -> io::Result<()> {
+    let og_works: Vec<OgWork> = data
+        .works
+        .iter()
+        .map(|work| OgWork {
+            slug: work.slug.clone(),
+            title: work.title.clone(),
+        })
+        .collect();
+
+    topcoat_render::write_og_images(dist_dir, &og_works)?;
 
     Ok(())
 }

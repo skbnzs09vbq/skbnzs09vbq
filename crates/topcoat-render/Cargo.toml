@@ -5,3 +5,6 @@ edition.workspace = true
 
 [dependencies]
 tera = { workspace = true }
+resvg = { workspace = true }
+tiny-skia = { workspace = true }
+usvg = { workspace = true }

@@ -1,41 +1,51 @@
 //! `topcoat-render` — `topcoat` のテンプレートレンダリング・OG 画像生成を担うライブラリ crate。
 //!
-//! 現時点では Tera によるテンプレートレンダリングのみを提供する。OG 画像生成等は
-//! 後続 issue で実装する。
+//! Tera によるテンプレートレンダリング ([`render_index`]) と、`resvg`/`tiny-skia` による
+//! OG 画像生成 ([`og_image`] / [`raster`] / [`svg_template`]) の 2 系統の機能を提供する。
+//! `topcoat` 側の `xml_writer` (XML エスケープ処理) には依存しない設計とする
+//! (SVG 用のエスケープ処理は [`svg_template`] 内に小さく独立実装している)。
 
 use std::fmt;
 use std::path::PathBuf;
 
 use tera::{Context, Tera};
 
+pub mod og_image;
+pub mod raster;
+pub mod svg_template;
+
+pub use og_image::{generate_og_image, write_og_images, OgWork};
+pub use raster::{rasterize_svg, RenderError as RasterError};
+pub use svg_template::build_og_svg;
+
 /// テンプレートのレンダリングに関するエラー。
 #[derive(Debug)]
-pub enum RenderError {
+pub enum TemplateRenderError {
     /// Tera でのテンプレート読み込み・レンダリングに失敗した。
     Template(tera::Error),
 }
 
-impl fmt::Display for RenderError {
+impl fmt::Display for TemplateRenderError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            RenderError::Template(err) => {
+            TemplateRenderError::Template(err) => {
                 write!(f, "テンプレートのレンダリングに失敗しました: {err}")
             }
         }
     }
 }
 
-impl std::error::Error for RenderError {
+impl std::error::Error for TemplateRenderError {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
-            RenderError::Template(err) => Some(err),
+            TemplateRenderError::Template(err) => Some(err),
         }
     }
 }
 
-impl From<tera::Error> for RenderError {
+impl From<tera::Error> for TemplateRenderError {
     fn from(err: tera::Error) -> Self {
-        RenderError::Template(err)
+        TemplateRenderError::Template(err)
     }
 }
 
@@ -43,22 +53,22 @@ impl From<tera::Error> for RenderError {
 ///
 /// `CARGO_MANIFEST_DIR`（= `crates/topcoat-render`）基準でテンプレートディレクトリを
 /// 解決するため、実行時のカレントディレクトリ（CWD）に依存しない。
-fn build_engine() -> Result<Tera, RenderError> {
+fn build_engine() -> Result<Tera, TemplateRenderError> {
     let glob_pattern = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("templates")
         .join("**")
         .join("*.tera");
 
-    Tera::new(&glob_pattern.to_string_lossy()).map_err(RenderError::from)
+    Tera::new(&glob_pattern.to_string_lossy()).map_err(TemplateRenderError::from)
 }
 
 /// トップページ (`index.html.tera`) をレンダリングし、HTML 文字列を返す。
-pub fn render_index() -> Result<String, RenderError> {
+pub fn render_index() -> Result<String, TemplateRenderError> {
     let engine = build_engine()?;
     let context = Context::new();
     engine
         .render("index.html.tera", &context)
-        .map_err(RenderError::from)
+        .map_err(TemplateRenderError::from)
 }
 
 #[cfg(test)]
