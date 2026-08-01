@@ -12,6 +12,7 @@
 //! - `main.rs` 側のプレースホルダ (`SiteData::default()` 相当) を実データ取得呼び出しに差し替える
 
 pub mod feed;
+pub mod series;
 pub mod sitemap;
 
 use std::fs;

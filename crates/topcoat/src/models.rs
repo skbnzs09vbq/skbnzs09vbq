@@ -18,6 +18,8 @@ pub struct Work {
     /// RFC3339 (UTC) 形式。未設定 (初期シード投入直後等) の場合は
     /// フィード/サイトマップ生成時に `created_at` へフォールバックする。
     pub updated_at: Option<String>,
+    /// 所属する [`Series`] の `slug` (FK)。未所属の場合は `None`。
+    pub series_slug: Option<String>,
 }
 
 impl Work {
