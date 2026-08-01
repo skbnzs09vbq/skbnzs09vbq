@@ -1,15 +1,16 @@
 //! `topcoat` — 自作 SSG (Static Site Generator) の CLI エントリーポイント。
 //!
 //! `build` サブコマンドの骨格は #11 (SSG ビルドエントリーポイント実装) で作成される想定だが、
-//! issue #15 (feed/sitemap 生成) の動作確認のため、issue #15 のスコープ内で最小限の `build`
-//! サブコマンドを暫定的に用意している。#11 のマージ後は、そちらのビルドパイプラインに
-//! [`topcoat::build::write_feeds_and_sitemap`] の呼び出しを組み込む形に差し替える。
+//! issue #15 (feed/sitemap 生成)・#13 (OG 画像生成) の動作確認のため、それぞれのスコープ内で
+//! 最小限の `build` サブコマンドを暫定的に用意している。#11 のマージ後は、そちらのビルド
+//! パイプラインに [`topcoat::build::write_feeds_and_sitemap`] /
+//! [`topcoat::build::write_og_images`] の呼び出しを組み込む形に差し替える。
 
 use std::path::Path;
 use std::process::ExitCode;
 
 use topcoat::build::series::write_series_pages;
-use topcoat::build::{write_feeds_and_sitemap, SiteData};
+use topcoat::build::{write_feeds_and_sitemap, write_og_images, SiteData};
 
 /// サイトのベース URL。
 ///
@@ -60,6 +61,12 @@ fn run_build() -> ExitCode {
         return ExitCode::FAILURE;
     }
     println!("wrote dist/series/<slug>/index.html for each series");
+
+    if let Err(err) = write_og_images(dist_dir, &data) {
+        eprintln!("build failed: {err}");
+        return ExitCode::FAILURE;
+    }
+    println!("wrote dist/works/<slug>/og.png");
 
     ExitCode::SUCCESS
 }
