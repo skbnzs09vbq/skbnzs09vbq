@@ -1,3 +1,4 @@
 .claude
 /target
+/dist
 crates/topcoat-db/data/*.sqlite3
