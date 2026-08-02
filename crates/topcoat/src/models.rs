@@ -69,6 +69,18 @@ pub struct Series {
     pub name: String,
 }
 
+/// Work に紐づくバージョン (更新履歴) 1件分の情報。
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Version {
+    /// 対象の Work の ID (DB 上の主キー)。
+    pub work_id: i64,
+    /// バージョン表記 (例: "v1.0")。
+    pub version: String,
+    pub note: String,
+    /// RFC3339 (UTC) 形式
+    pub created_at: String,
+}
+
 /// 関連作品への参照。一覧表示に必要な最小限の情報のみを持つ。
 ///
 /// #7 (関連作品算出ロジック) マージ後に実データへ差し替える想定の暫定 struct。

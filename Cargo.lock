@@ -1304,6 +1304,7 @@ dependencies = [
  "serde_json",
  "tempfile",
  "tera",
+ "topcoat-db",
  "topcoat-render",
 ]
 

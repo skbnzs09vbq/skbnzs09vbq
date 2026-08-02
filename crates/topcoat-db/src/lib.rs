@@ -23,7 +23,11 @@ pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!("migrations");
 ///
 /// `CARGO_MANIFEST_DIR` 基準で `data/site.sqlite3` を返すため、
 /// 実行時のカレントディレクトリ（CWD）に依存しない。
-fn database_path() -> PathBuf {
+///
+/// 本番用の固定パスが必要な呼び出し元（`topcoat` の `main.rs` 等）が
+/// [`establish_connection_at`] に渡すために利用する。テストでは代わりに
+/// `tempfile` 等で払い出した一時パスを使うこと。
+pub fn database_path() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("data")
         .join("site.sqlite3")
