@@ -139,6 +139,7 @@ mod tests {
             created_at: created_at.to_string(),
             updated_at: None,
             tags: vec![],
+            thumbnail: None,
             series: None,
             series_slug: Some(series_slug.to_string()),
             params: serde_json::Value::Null,

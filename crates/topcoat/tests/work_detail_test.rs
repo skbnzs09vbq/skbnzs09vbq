@@ -20,6 +20,7 @@ fn work(slug: &str, title: &str) -> Work {
             slug: "shader".to_string(),
             name: "シェーダー".to_string(),
         }],
+        thumbnail: None,
         series: Some(Series {
             slug: "series-1".to_string(),
             name: "シリーズ1".to_string(),

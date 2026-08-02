@@ -3,10 +3,21 @@ name = "topcoat-db"
 version = "0.1.0"
 edition.workspace = true
 
+# 初期シードデータ投入用バイナリ（`cargo run --bin seed`）。
+# `crates/topcoat/Cargo.toml` の `[[bin]]`（`path = "src/main.rs"`）と同じ流儀で、
+# `src/` 配下ではなく `seed/` を明示的なバイナリターゲットとして構成している
+# （Cargo の `src/bin/` 自動検出とは異なる、issue #8 の指定パスに忠実な構成）。
+[[bin]]
+name = "seed"
+path = "seed/main.rs"
+
 [dependencies]
+chrono.workspace = true
 diesel.workspace = true
 diesel_migrations.workspace = true
 libsqlite3-sys.workspace = true
+slug.workspace = true
+serde.workspace = true
 
 [dev-dependencies]
-tempfile = "3"
+tempfile = { workspace = true }

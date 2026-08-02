@@ -1,39 +1,49 @@
 //! `topcoat build` のビルドパイプライン。
 //!
-//! 本来このモジュールの骨格は #11 (SSG ビルドエントリーポイント実装) で作成され、
-//! 全 Work/Tag/Series 取得フックは #4 (SQLite + Diesel 導入) / #6 (Work テーブル) /
-//! #9 (タグ別一覧) / #10 (シリーズ別一覧) で実装される想定だが、issue #15/#12 着手時点で
-//! いずれも未マージのため、本 issue のスコープ内で完結させるために最小限の
-//! [`SiteData`] 受け渡しインターフェースを暫定的に用意している。issue #13 (OG 画像生成) も
-//! 同じ前例 (#15) を踏襲し、[`SiteData`] 経由で [`write_og_images`] をフックしている。
-//!
-//! [`write_feeds_and_sitemap`] (feed/sitemap 生成) に加え、[`write_work_detail_pages`]
-//! (作品詳細静的ページ `dist/works/<slug>/index.html` 生成) も同様の入口として提供する。
+//! マイグレーション適用 → topcoat-db 経由の Work/Tag/Series/Version 取得 → Tera による
+//! レンダリング → feed/sitemap/search-index 生成 → 作品詳細静的ページ生成 → OG 画像生成 →
+//! `dist/` 配下への書き出し、までの一連の処理を [`run`] に配線している。
 //!
 //! 後続 issue のマージ後にやること:
 //! - [`SiteData`] を Diesel 経由の実データ取得結果から構築する処理に差し替える
 //! - `main.rs` 側のプレースホルダ (`SiteData::default()` 相当) を実データ取得呼び出しに差し替える
+//!
+//! Work/Tag/Series/Version の実テーブル定義は #6 (Work テーブル) / #10 (シリーズ別一覧) が
+//! 未マージのため、[`fetch_site_data`] は現時点では空データを返すプレースホルダになっている。
+//! 上記 issue のマージ後は、Diesel 経由の実データ取得処理に差し替える。
+//!
+//! 追記 (issue #9 時点): タグ別一覧ページ生成 (`dist/tags/<slug>/index.html`) は
+//! 本 issue で [`tags`] モジュールとして実装済み。ただし #2 (Tag⇔Work 多対多)・
+//! #6 (Work テーブル) が未マージのため、[`crate::models::Work`] に暫定的に
+//! `thumbnail` フィールドを追加して対応している。
+//!
+//! [`write_feeds_and_sitemap`] (feed/sitemap/search-index 生成) に加え、
+//! [`write_work_detail_pages`] (作品詳細静的ページ `dist/works/<slug>/index.html` 生成) も
+//! 同様の入口として提供する。
 
 pub mod feed;
 pub mod search_index;
 pub mod series;
 pub mod sitemap;
+pub mod tags;
 pub mod work_detail;
 
 use std::fs;
 use std::io;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
-use crate::models::{Series, Tag, Work};
+use crate::models::{Series, Tag, Version, Work};
 use feed::{generate_json_feed, generate_rss, FeedMeta, FeedWork};
 use search_index::{generate_search_index, SearchIndexEntry};
+pub use series::write_series_pages;
 use sitemap::{
     generate_sitemap, SitemapInput, SitemapSeriesEntry, SitemapTagEntry, SitemapWorkEntry,
 };
+use tags::{TagPageEntry, TagPageWork};
 use topcoat_render::OgWork;
 pub use work_detail::write_work_detail_pages;
 
-/// `topcoat build` が feed/sitemap/search-index 生成に必要とする全データ。
+/// `topcoat build` が feed/sitemap/search-index/ページ生成に必要とする全データ。
 ///
 /// `works` は新着順 (`created_at` 降順) に並んでいる前提。
 #[derive(Debug, Clone, Default)]
@@ -41,6 +51,68 @@ pub struct SiteData {
     pub works: Vec<Work>,
     pub tags: Vec<Tag>,
     pub series: Vec<Series>,
+    pub versions: Vec<Version>,
+}
+
+/// サイト全体で共有される設定値。
+#[derive(Debug, Clone)]
+pub struct BuildConfig {
+    /// 末尾スラッシュなしのベース URL (例: `https://example.com`)
+    pub base_url: String,
+    pub site_title: String,
+    pub site_description: String,
+    /// マイグレーション適用先の SQLite ファイルパス。
+    ///
+    /// 本番では `topcoat_db::database_path()`（固定パス）を、テストでは
+    /// `tempfile` 等で払い出した一時パスを渡す。
+    pub db_path: PathBuf,
+}
+
+/// マイグレーション適用 → (プレースホルダの) Work/Tag/Series/Version 取得 → レンダリング →
+/// feed/sitemap/search-index 生成 → シリーズ別一覧ページ生成 → タグ別一覧ページ生成 →
+/// 作品詳細静的ページ生成 → OG 画像生成 → `dist_dir` 配下への書き出し、までの一連の
+/// ビルドパイプラインを実行する。
+pub fn run(dist_dir: &Path, config: &BuildConfig) -> io::Result<()> {
+    apply_migrations(&config.db_path).map_err(io::Error::other)?;
+
+    let data = fetch_site_data();
+
+    fs::create_dir_all(dist_dir)?;
+
+    let index_html = topcoat_render::render_index().map_err(io::Error::other)?;
+    fs::write(dist_dir.join("index.html"), index_html)?;
+
+    write_feeds_and_sitemap(
+        dist_dir,
+        &config.base_url,
+        &config.site_title,
+        &config.site_description,
+        &data,
+    )?;
+
+    write_series_pages(dist_dir, &data.works, &data.series)?;
+    write_tag_pages(dist_dir, &data)?;
+
+    let tera = topcoat_render::build_tera().map_err(io::Error::other)?;
+    write_work_detail_pages(dist_dir, &tera, &data.works)?;
+
+    write_og_images(dist_dir, &data)
+}
+
+/// `db_path` の SQLite ファイルへの接続を確立し、埋め込みマイグレーションを適用する。
+fn apply_migrations(
+    db_path: &Path,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>> {
+    let mut connection = topcoat_db::establish_connection_at(db_path)?;
+    topcoat_db::run_migrations(&mut connection)
+}
+
+/// topcoat-db 経由で Work/Tag/Series/Version を全件取得する。
+///
+/// TODO(#6, #9, #10): 実テーブル定義のマージ後、Diesel 経由の実データ取得に差し替える。
+/// 現時点ではテーブル未定義のため、空データを返すプレースホルダとする。
+fn fetch_site_data() -> SiteData {
+    SiteData::default()
 }
 
 /// `dist/feed.xml` / `dist/feed.json` / `dist/sitemap.xml` / `dist/search-index.json` を
@@ -143,4 +215,36 @@ pub fn write_og_images(dist_dir: &Path, data: &SiteData) -> io::Result<()> {
     topcoat_render::write_og_images(dist_dir, &og_works)?;
 
     Ok(())
+}
+
+/// `dist/tags/<slug>/index.html` を Tag ごとに `dist_dir` 配下に書き出す。
+///
+/// 各タグには、そのタグが付与された Work のみが一覧として渡される
+/// (`data.works` の各要素が持つ [`Work::tags`] を見てフィルタする)。
+/// `works` の並び順は `data.works` の並び順をそのまま保持する。
+pub fn write_tag_pages(dist_dir: &Path, data: &SiteData) -> io::Result<()> {
+    let entries: Vec<TagPageEntry> = data
+        .tags
+        .iter()
+        .map(|tag| {
+            let works = data
+                .works
+                .iter()
+                .filter(|work| work.tags.iter().any(|work_tag| work_tag.slug == tag.slug))
+                .map(|work| TagPageWork {
+                    slug: work.slug.clone(),
+                    title: work.title.clone(),
+                    thumbnail: work.thumbnail.clone(),
+                })
+                .collect();
+
+            TagPageEntry {
+                slug: tag.slug.clone(),
+                name: tag.name.clone(),
+                works,
+            }
+        })
+        .collect();
+
+    tags::write_tag_pages(dist_dir, &entries)
 }
