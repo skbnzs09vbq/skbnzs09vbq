@@ -132,6 +132,15 @@ fn write_tag_pages_writes_dist_tags_slug_index_html_for_each_tag() {
 fn site_data_tag_pages_only_include_works_tagged_with_that_tag() {
     let dir = tempfile::tempdir().unwrap();
 
+    let illustration_tag = Tag {
+        slug: "illustration".to_string(),
+        name: "イラスト".to_string(),
+    };
+    let manga_tag = Tag {
+        slug: "manga".to_string(),
+        name: "漫画".to_string(),
+    };
+
     let data = SiteData {
         works: vec![
             Work {
@@ -140,8 +149,12 @@ fn site_data_tag_pages_only_include_works_tagged_with_that_tag() {
                 description: "".to_string(),
                 created_at: "2026-01-01T00:00:00Z".to_string(),
                 updated_at: None,
-                tags: vec!["illustration".to_string()],
+                tags: vec![illustration_tag.clone()],
                 thumbnail: None,
+                series: None,
+                series_slug: None,
+                params: serde_json::Value::Null,
+                related_works: vec![],
             },
             Work {
                 slug: "work-2".to_string(),
@@ -149,21 +162,17 @@ fn site_data_tag_pages_only_include_works_tagged_with_that_tag() {
                 description: "".to_string(),
                 created_at: "2026-01-02T00:00:00Z".to_string(),
                 updated_at: None,
-                tags: vec!["illustration".to_string(), "manga".to_string()],
+                tags: vec![illustration_tag.clone(), manga_tag.clone()],
                 thumbnail: None,
+                series: None,
+                series_slug: None,
+                params: serde_json::Value::Null,
+                related_works: vec![],
             },
         ],
-        tags: vec![
-            Tag {
-                slug: "illustration".to_string(),
-                name: "イラスト".to_string(),
-            },
-            Tag {
-                slug: "manga".to_string(),
-                name: "漫画".to_string(),
-            },
-        ],
+        tags: vec![illustration_tag, manga_tag],
         series: vec![],
+        versions: vec![],
     };
 
     write_tag_pages_from_site_data(dir.path(), &data).unwrap();

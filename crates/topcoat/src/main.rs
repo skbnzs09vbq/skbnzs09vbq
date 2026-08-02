@@ -1,14 +1,13 @@
 //! `topcoat` — 自作 SSG (Static Site Generator) の CLI エントリーポイント。
 //!
-//! `build` サブコマンドの骨格は #11 (SSG ビルドエントリーポイント実装) で作成される想定だが、
-//! issue #15 (feed/sitemap 生成) の動作確認のため、issue #15 のスコープ内で最小限の `build`
-//! サブコマンドを暫定的に用意している。#11 のマージ後は、そちらのビルドパイプラインに
-//! [`topcoat::build::write_feeds_and_sitemap`] の呼び出しを組み込む形に差し替える。
+//! `build` サブコマンドは [`topcoat::build::run`] にマイグレーション適用 → データ取得 →
+//! レンダリング → feed/sitemap/search-index 生成 → タグ別・シリーズ別一覧・作品詳細ページ生成 →
+//! OG 画像生成、までの一連のビルドパイプラインを配線している。
 
 use std::path::Path;
 use std::process::ExitCode;
 
-use topcoat::build::{write_feeds_and_sitemap, write_tag_pages, SiteData};
+use topcoat::build::{self, BuildConfig};
 
 /// サイトのベース URL。
 ///
@@ -41,25 +40,25 @@ fn run(command: Command) -> ExitCode {
 }
 
 fn run_build() -> ExitCode {
-    // TODO(#4, #6, #10, #11): SQLite + Diesel 経由で Work/Tag/Series を取得する処理に
-    // 差し替える。現時点ではそれらの前提 issue が未マージのため、空データで動作確認する。
-    let data = SiteData::default();
-    let dist_dir = Path::new("dist");
+    let config = BuildConfig {
+        base_url: SITE_BASE_URL.to_string(),
+        site_title: SITE_TITLE.to_string(),
+        site_description: SITE_DESCRIPTION.to_string(),
+        db_path: topcoat_db::database_path(),
+    };
 
-    if let Err(err) =
-        write_feeds_and_sitemap(dist_dir, SITE_BASE_URL, SITE_TITLE, SITE_DESCRIPTION, &data)
-    {
-        eprintln!("build failed: {err}");
-        return ExitCode::FAILURE;
+    match build::run(Path::new("dist"), &config) {
+        Ok(()) => {
+            println!(
+                "wrote dist/index.html, dist/feed.xml, dist/feed.json, dist/sitemap.xml, dist/search-index.json, dist/series/<slug>/index.html, dist/works/<slug>/index.html, dist/works/<slug>/og.png, dist/tags/<slug>/index.html"
+            );
+            ExitCode::SUCCESS
+        }
+        Err(err) => {
+            eprintln!("build failed: {err}");
+            ExitCode::FAILURE
+        }
     }
-
-    if let Err(err) = write_tag_pages(dist_dir, &data) {
-        eprintln!("build failed: {err}");
-        return ExitCode::FAILURE;
-    }
-
-    println!("wrote dist/feed.xml, dist/feed.json, dist/sitemap.xml, dist/tags/<slug>/index.html");
-    ExitCode::SUCCESS
 }
 
 fn main() -> ExitCode {

@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>{{ title }}</title>
+  <meta name="description" content="{{ description }}">
+
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="{{ title }}">
+  <meta property="og:description" content="{{ description }}">
+  <meta property="og:url" content="/works/{{ slug }}/">
+  <meta property="og:image" content="/works/{{ slug }}/og.png">
+  <meta name="twitter:card" content="summary_large_image">
+</head>
+<body>
+  <article class="work-detail" data-slug="{{ slug }}">
+    <h1>{{ title }}</h1>
+    <p class="work-description">{{ description }}</p>
+
+    <div id="work-canvas" data-slug="{{ slug }}">
+      <!-- ライブレンダリング (シェーダー/Canvas) の実装は別 issue の範囲 -->
+    </div>
+
+    {% if tags %}
+    <ul class="work-tags">
+      {% for tag in tags %}
+      <li><a href="/tags/{{ tag.slug }}/">{{ tag.name }}</a></li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+
+    {% if series %}
+    <p class="work-series">
+      シリーズ: <a href="/series/{{ series.slug }}/">{{ series.name }}</a>
+    </p>
+    {% endif %}
+
+    <section class="work-params">
+      <h2>Params</h2>
+      <pre>{{ params | json_encode(pretty=true) }}</pre>
+    </section>
+
+    {% if related_works %}
+    <section class="related-works">
+      <h2>関連作品</h2>
+      <ul>
+        {% for related in related_works %}
+        <li><a href="/works/{{ related.slug }}/">{{ related.title }}</a></li>
+        {% endfor %}
+      </ul>
+    </section>
+    {% endif %}
+  </article>
+</body>
+</html>
