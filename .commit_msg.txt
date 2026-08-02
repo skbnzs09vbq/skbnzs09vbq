@@ -1,1 +1,0 @@
-feat: issue-30 add Askama base layout and static asset pipeline
