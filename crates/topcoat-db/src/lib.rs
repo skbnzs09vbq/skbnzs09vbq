@@ -11,6 +11,7 @@ pub mod schema;
 use std::fs;
 use std::path::{Path, PathBuf};
 
+use diesel::connection::SimpleConnection;
 use diesel::sqlite::SqliteConnection;
 use diesel::{Connection, ConnectionError, ConnectionResult};
 use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
@@ -42,6 +43,10 @@ pub fn establish_connection() -> ConnectionResult<SqliteConnection> {
 /// `db_path` の配置先ディレクトリが存在しない場合は先に作成する。
 /// テストなど、固定パス（[`establish_connection`]）とは別の DB ファイルを
 /// 使いたい場合に利用する。
+///
+/// SQLite は接続ごとに `PRAGMA foreign_keys` が既定で無効になっているため、
+/// 確立した接続に対して明示的に `PRAGMA foreign_keys = ON;` を発行し、
+/// FOREIGN KEY 制約（例: `versions.work_id`）がランタイムで強制されるようにする。
 pub fn establish_connection_at(db_path: &Path) -> ConnectionResult<SqliteConnection> {
     if let Some(dir) = db_path.parent() {
         if !dir.exists() {
@@ -54,7 +59,12 @@ pub fn establish_connection_at(db_path: &Path) -> ConnectionResult<SqliteConnect
         }
     }
 
-    SqliteConnection::establish(&db_path.to_string_lossy())
+    let mut connection = SqliteConnection::establish(&db_path.to_string_lossy())?;
+    connection
+        .batch_execute("PRAGMA foreign_keys = ON;")
+        .map_err(ConnectionError::CouldntSetupConfiguration)?;
+
+    Ok(connection)
 }
 
 /// 埋め込まれたマイグレーション（`MIGRATIONS`）を DB に適用する。

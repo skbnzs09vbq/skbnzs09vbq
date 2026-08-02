@@ -10,8 +10,8 @@ use tempfile::NamedTempFile;
 use topcoat_db::models::{NewVersion, Version};
 use topcoat_db::schema::versions;
 
-/// `works` テーブルは別 issue（#6）で追加される。このプロジェクトの SQLite 接続は
-/// `PRAGMA foreign_keys = ON` がデフォルトで有効なため、`versions.work_id` の
+/// `works` テーブルは別 issue（#6）で追加される。`topcoat_db::establish_connection_at`
+/// が接続確立時に `PRAGMA foreign_keys = ON;` を発行するため、`versions.work_id` の
 /// FOREIGN KEY 制約を満たすテスト用の最小限のスタブテーブルを用意する。
 fn seed_stub_works_table(connection: &mut SqliteConnection) {
     connection
