@@ -4,6 +4,7 @@
 //! `tempfile` で払い出した一意な一時パスへ接続する（固定パスを共有すると SQLite の
 //! 書き込みロック競合で間欠的に失敗するため）。
 
+use chrono::NaiveDate;
 use diesel::prelude::*;
 use diesel::sqlite::SqliteConnection;
 use tempfile::NamedTempFile;
@@ -23,12 +24,21 @@ fn setup_db() -> (NamedTempFile, SqliteConnection) {
 }
 
 fn insert_work(conn: &mut SqliteConnection, id: i32, slug: &str, title: &str, thumbnail: &str) {
+    // 本番の `works` テーブル（issue #6 で正式定義）は `created_at`/`updated_at` に
+    // DB レベルの DEFAULT を持たないため、insert 時に明示的に値を指定する必要がある。
+    let now = NaiveDate::from_ymd_opt(2026, 1, 1)
+        .expect("有効な日付です")
+        .and_hms_opt(0, 0, 0)
+        .expect("有効な時刻です");
+
     diesel::insert_into(works::table)
         .values((
             works::id.eq(id),
             works::slug.eq(slug),
             works::title.eq(title),
             works::thumbnail.eq(thumbnail),
+            works::created_at.eq(now),
+            works::updated_at.eq(now),
         ))
         .execute(conn)
         .expect("work の insert に失敗しました");

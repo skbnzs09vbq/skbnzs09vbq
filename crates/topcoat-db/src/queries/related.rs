@@ -4,12 +4,13 @@
 //! 場合は、`work_tags` を介した共有タグ数（積集合サイズ）が多い順に上位N件を自動算出する
 //! フォールバックで求める。
 //!
-//! 暫定実装に関する注記: 本モジュールが依存する `works` / `tags` / `work_tags` テーブルは、
-//! 本来 issue #6（Workエンティティ）・#2（Tagエンティティと Work-Tag 多対多リレーション）で
-//! 定義される想定だが、issue #7 着手時点でいずれも未マージのため、`crates/topcoat-db/migrations`
-//! 配下に issue #7 が必要とする範囲に限定した暫定スキーマとして先行作成している
-//! （詳細は各マイグレーションのコメントを参照）。#6・#2 マージ後は、カラム構成の差分を
-//! 追加マイグレーションで揃えること。
+//! 暫定実装に関する注記: 本モジュールが依存する `tags` / `work_tags` テーブルは、
+//! 本来 issue #2（Tagエンティティと Work-Tag 多対多リレーション）で定義される想定だが、
+//! issue #7 着手時点で未マージのため、`crates/topcoat-db/migrations` 配下に issue #7 が
+//! 必要とする範囲に限定した暫定スキーマとして先行作成している（詳細は各マイグレーションの
+//! コメントを参照）。#2 マージ後は、カラム構成の差分を追加マイグレーションで揃えること。
+//! （`works` テーブルは issue #6 マージ時に正式スキーマへ統合済み。`thumbnail` カラムは
+//! nullable なため、本モジュールでも `Option<String>` として扱う。）
 
 use std::collections::HashMap;
 
@@ -34,15 +35,16 @@ pub const DEFAULT_RELATED_WORKS_LIMIT: usize = 4;
 pub struct RelatedWork {
     pub slug: String,
     pub title: String,
-    pub thumbnail: String,
+    pub thumbnail: Option<String>,
     pub shared_tag_count: i64,
 }
 
-/// `(id, slug, title, thumbnail)` — Work 1件分の基本情報。
-type WorkRow = (i32, String, String, String);
+/// `(id, slug, title, thumbnail)` — Work 1件分の基本情報。`thumbnail` は nullable カラムのため
+/// `Option<String>`。
+type WorkRow = (i32, String, String, Option<String>);
 
 /// `(id, slug, title, thumbnail, shared_tag_count)` — 共有タグ数付きの Work 情報。
-type RankedWorkRow = (i32, String, String, String, i64);
+type RankedWorkRow = (i32, String, String, Option<String>, i64);
 
 /// `related_works` テーブルに登録された、`work_id` の明示的リレーション先を取得する。
 ///
@@ -54,7 +56,7 @@ fn explicit_related_works(conn: &mut SqliteConnection, work_id: i32) -> QueryRes
         .filter(related_works::work_id.eq(work_id))
         .order(related_works::related_work_id.asc())
         .select((works::id, works::slug, works::title, works::thumbnail))
-        .load::<(i32, String, String, String)>(conn)
+        .load::<WorkRow>(conn)
 }
 
 /// 対象 `work_id` に紐づく `tag_id` 一覧を取得する。
