@@ -15,6 +15,17 @@ diesel::table! {
 }
 
 diesel::table! {
+    series (id) {
+        id -> Integer,
+        name -> Text,
+        slug -> Text,
+        description -> Text,
+        created_at -> Timestamp,
+        updated_at -> Timestamp,
+    }
+}
+
+diesel::table! {
     tags (id) {
         id -> Integer,
         name -> Text,
@@ -56,5 +67,13 @@ diesel::table! {
 diesel::joinable!(versions -> works (work_id));
 diesel::joinable!(work_tags -> tags (tag_id));
 diesel::joinable!(work_tags -> works (work_id));
+diesel::joinable!(works -> series (series_id));
 
-diesel::allow_tables_to_appear_in_same_query!(related_works, tags, versions, work_tags, works,);
+diesel::allow_tables_to_appear_in_same_query!(
+    related_works,
+    series,
+    tags,
+    versions,
+    work_tags,
+    works,
+);

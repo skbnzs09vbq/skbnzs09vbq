@@ -71,7 +71,6 @@ pub struct SeriesPageWork {
 /// 並び替えを行わない。
 #[derive(Debug, Clone)]
 pub struct SeriesPageInput {
-    pub series_slug: String,
     pub series_name: String,
     pub works: Vec<SeriesPageWork>,
 }
@@ -104,7 +103,6 @@ pub fn write_series_pages(dist_dir: &Path, works: &[Work], series: &[Series]) ->
         series_works.sort_by(|a, b| a.created_at.cmp(&b.created_at));
 
         let input = SeriesPageInput {
-            series_slug: s.slug.clone(),
             series_name: s.name.clone(),
             works: series_works
                 .into_iter()
@@ -150,7 +148,6 @@ mod tests {
     #[test]
     fn render_empty_works_produces_empty_list_message() {
         let input = SeriesPageInput {
-            series_slug: "series-a".to_string(),
             series_name: "Series A".to_string(),
             works: vec![],
         };
@@ -162,7 +159,6 @@ mod tests {
     #[test]
     fn render_escapes_special_characters() {
         let input = SeriesPageInput {
-            series_slug: "series-a".to_string(),
             series_name: "Series A".to_string(),
             works: vec![SeriesPageWork {
                 slug: "work-1".to_string(),

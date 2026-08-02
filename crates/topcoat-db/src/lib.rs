@@ -10,7 +10,7 @@
 //! 暫定スキーマとして先行作成されていたが、#6 マージ時に issue #6 が正式に定義する完全な
 //! `works` スキーマへ統合済み（詳細は `migrations/2026-08-01-170200-0000_create_works` の
 //! コメントおよび [`queries::related`] を参照）。
-//! Series 等、その他のテーブル定義・エンティティ実装は後続 issue で行う。
+//! `series` テーブルと [`models::Series`] エンティティは issue #1 で追加している。
 
 pub mod models;
 pub mod queries;

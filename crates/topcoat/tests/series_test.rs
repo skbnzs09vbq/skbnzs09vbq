@@ -97,7 +97,6 @@ fn works_belonging_to_other_series_are_not_included() {
 #[test]
 fn title_and_description_special_characters_are_html_escaped() {
     let input = SeriesPageInput {
-        series_slug: "series-1".to_string(),
         series_name: "Series 1".to_string(),
         works: vec![SeriesPageWork {
             slug: "work-1".to_string(),
