@@ -9,8 +9,8 @@
 <ul class="work-list">
 {% for work in works %}
 <li class="work-item">
-{% if work.thumbnail %}<img class="work-thumbnail" src="{{ work.thumbnail | safe }}" alt="{{ work.title }}">{% endif %}
-<a class="work-link" href="/works/{{ work.slug | safe }}/">{{ work.title }}</a>
+{% if work.thumbnail %}<img class="work-thumbnail" src="{{ work.thumbnail }}" alt="{{ work.title }}">{% endif %}
+<a class="work-link" href="/works/{{ work.slug }}/">{{ work.title }}</a>
 </li>
 {% endfor %}
 </ul>

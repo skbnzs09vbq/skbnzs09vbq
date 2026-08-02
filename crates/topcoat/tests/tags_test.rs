@@ -5,7 +5,9 @@
 
 use std::fs;
 
-use topcoat::build::tags::{render_tag_page, write_tag_pages, TagPageEntry, TagPageWork};
+use topcoat::build::tags::{
+    build_tera, render_tag_page, write_tag_pages, TagPageEntry, TagPageWork,
+};
 use topcoat::build::{write_tag_pages as write_tag_pages_from_site_data, SiteData};
 use topcoat::models::{Tag, Work};
 
@@ -19,7 +21,8 @@ fn entry(slug: &str, name: &str, works: Vec<TagPageWork>) -> TagPageEntry {
 
 #[test]
 fn zero_works_renders_well_formed_page_with_no_items() {
-    let html = render_tag_page(&entry("illustration", "イラスト", vec![])).unwrap();
+    let tera = build_tera().unwrap();
+    let html = render_tag_page(&tera, &entry("illustration", "イラスト", vec![])).unwrap();
     assert!(html.starts_with("<!DOCTYPE html>"));
     assert!(html.contains("<h1>イラスト</h1>"));
     assert!(!html.contains("work-item"));
@@ -27,35 +30,65 @@ fn zero_works_renders_well_formed_page_with_no_items() {
 
 #[test]
 fn one_work_includes_title_link_and_thumbnail() {
-    let html = render_tag_page(&entry(
-        "illustration",
-        "イラスト",
-        vec![TagPageWork {
-            slug: "work-1".to_string(),
-            title: "作品タイトル".to_string(),
-            thumbnail: Some("/thumbs/work-1.png".to_string()),
-        }],
-    ))
+    let tera = build_tera().unwrap();
+    let html = render_tag_page(
+        &tera,
+        &entry(
+            "illustration",
+            "イラスト",
+            vec![TagPageWork {
+                slug: "work-1".to_string(),
+                title: "作品タイトル".to_string(),
+                thumbnail: Some("/thumbs/work-1.png".to_string()),
+            }],
+        ),
+    )
     .unwrap();
     assert!(html.contains(r#"<a class="work-link" href="/works/work-1/">作品タイトル</a>"#));
-    assert!(html.contains(r#"src="/thumbs/work-1.png""#));
+    // Tera の自動エスケープにより thumbnail の値に含まれる `/` は `&#x2F;` にエンティティ化される
+    // （ブラウザは属性値中でこれを `/` として正しくデコードするため実害はない）。
+    assert!(html.contains(r#"src="&#x2F;thumbs&#x2F;work-1.png""#));
 }
 
 #[test]
 fn escapes_special_characters_in_tag_name_and_work_title() {
-    let html = render_tag_page(&entry(
-        "special",
-        "<script>&\"tag\"",
-        vec![TagPageWork {
-            slug: "work-1".to_string(),
-            title: "<script>&\"title\"".to_string(),
-            thumbnail: None,
-        }],
-    ))
+    let tera = build_tera().unwrap();
+    let html = render_tag_page(
+        &tera,
+        &entry(
+            "special",
+            "<script>&\"tag\"",
+            vec![TagPageWork {
+                slug: "work-1".to_string(),
+                title: "<script>&\"title\"".to_string(),
+                thumbnail: None,
+            }],
+        ),
+    )
     .unwrap();
     assert!(!html.contains("<script>"));
     assert!(html.contains("&lt;script&gt;&amp;&quot;tag&quot;"));
     assert!(html.contains("&lt;script&gt;&amp;&quot;title&quot;"));
+}
+
+#[test]
+fn escapes_special_characters_in_work_thumbnail_and_slug() {
+    let tera = build_tera().unwrap();
+    let html = render_tag_page(
+        &tera,
+        &entry(
+            "illustration",
+            "イラスト",
+            vec![TagPageWork {
+                slug: "foo\"><script>alert(1)</script>".to_string(),
+                title: "作品1".to_string(),
+                thumbnail: Some("x\" onerror=\"alert(1)".to_string()),
+            }],
+        ),
+    )
+    .unwrap();
+    assert!(!html.contains("<script>alert(1)</script>"));
+    assert!(!html.contains(r#"" onerror="alert(1)"#));
 }
 
 #[test]

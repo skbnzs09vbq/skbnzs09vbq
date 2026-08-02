@@ -52,7 +52,10 @@ struct TagContext<'a> {
     name: &'a str,
 }
 
-fn build_tera() -> Result<Tera, tera::Error> {
+/// タグ一覧ページテンプレートを読み込み済みの [`Tera`] インスタンスを構築する。
+///
+/// テンプレートは静的なため、呼び出し側で一度だけ構築して使い回すこと。
+pub fn build_tera() -> Result<Tera, tera::Error> {
     let mut tera = Tera::default();
     tera.add_raw_template(TEMPLATE_NAME, TEMPLATE_SOURCE)?;
     Ok(tera)
@@ -61,9 +64,9 @@ fn build_tera() -> Result<Tera, tera::Error> {
 /// 1タグ分の `index.html` を文字列として生成する。
 ///
 /// この関数自体はファイル I/O を行わない純粋関数。
-pub fn render_tag_page(entry: &TagPageEntry) -> Result<String, tera::Error> {
-    let tera = build_tera()?;
-
+/// `tera` は呼び出し側で一度だけ構築したインスタンスを渡すこと
+/// （テンプレートは静的なため、呼び出しごとに再構築・再パースする必要はない）。
+pub fn render_tag_page(tera: &Tera, entry: &TagPageEntry) -> Result<String, tera::Error> {
     let mut context = Context::new();
     context.insert(
         "tag",
@@ -79,8 +82,11 @@ pub fn render_tag_page(entry: &TagPageEntry) -> Result<String, tera::Error> {
 
 /// `entries` の各タグについて `dist_dir/tags/<slug>/index.html` を書き出す。
 pub fn write_tag_pages(dist_dir: &Path, entries: &[TagPageEntry]) -> io::Result<()> {
+    let tera = build_tera().map_err(|err| io::Error::other(err.to_string()))?;
+
     for entry in entries {
-        let html = render_tag_page(entry).map_err(|err| io::Error::other(err.to_string()))?;
+        let html =
+            render_tag_page(&tera, entry).map_err(|err| io::Error::other(err.to_string()))?;
 
         let out_dir = dist_dir.join("tags").join(&entry.slug);
         fs::create_dir_all(&out_dir)?;
@@ -104,7 +110,8 @@ mod tests {
 
     #[test]
     fn renders_tag_name_and_no_items_when_no_works() {
-        let html = render_tag_page(&entry("illustration", "イラスト", vec![])).unwrap();
+        let tera = build_tera().unwrap();
+        let html = render_tag_page(&tera, &entry("illustration", "イラスト", vec![])).unwrap();
         assert!(html.contains("<h1>イラスト</h1>"));
         assert!(html.contains("<title>イラスト の作品一覧</title>"));
         assert!(!html.contains("work-item"));
@@ -112,69 +119,87 @@ mod tests {
 
     #[test]
     fn renders_work_title_and_link() {
-        let html = render_tag_page(&entry(
-            "illustration",
-            "イラスト",
-            vec![TagPageWork {
-                slug: "work-1".to_string(),
-                title: "作品1".to_string(),
-                thumbnail: None,
-            }],
-        ))
+        let tera = build_tera().unwrap();
+        let html = render_tag_page(
+            &tera,
+            &entry(
+                "illustration",
+                "イラスト",
+                vec![TagPageWork {
+                    slug: "work-1".to_string(),
+                    title: "作品1".to_string(),
+                    thumbnail: None,
+                }],
+            ),
+        )
         .unwrap();
         assert!(html.contains(r#"<a class="work-link" href="/works/work-1/">作品1</a>"#));
     }
 
     #[test]
     fn renders_thumbnail_img_when_present() {
-        let html = render_tag_page(&entry(
-            "illustration",
-            "イラスト",
-            vec![TagPageWork {
-                slug: "work-1".to_string(),
-                title: "作品1".to_string(),
-                thumbnail: Some("/thumbs/work-1.png".to_string()),
-            }],
-        ))
+        let tera = build_tera().unwrap();
+        let html = render_tag_page(
+            &tera,
+            &entry(
+                "illustration",
+                "イラスト",
+                vec![TagPageWork {
+                    slug: "work-1".to_string(),
+                    title: "作品1".to_string(),
+                    thumbnail: Some("/thumbs/work-1.png".to_string()),
+                }],
+            ),
+        )
         .unwrap();
-        assert!(
-            html.contains(r#"<img class="work-thumbnail" src="/thumbs/work-1.png" alt="作品1">"#)
-        );
+        // Tera の自動エスケープにより `/` は `&#x2F;` にエンティティ化される
+        // （ブラウザは属性値中でこれを `/` として正しくデコードするため実害はない）。
+        assert!(html.contains(
+            r#"<img class="work-thumbnail" src="&#x2F;thumbs&#x2F;work-1.png" alt="作品1">"#
+        ));
     }
 
     #[test]
     fn omits_thumbnail_img_when_absent() {
-        let html = render_tag_page(&entry(
-            "illustration",
-            "イラスト",
-            vec![TagPageWork {
-                slug: "work-1".to_string(),
-                title: "作品1".to_string(),
-                thumbnail: None,
-            }],
-        ))
+        let tera = build_tera().unwrap();
+        let html = render_tag_page(
+            &tera,
+            &entry(
+                "illustration",
+                "イラスト",
+                vec![TagPageWork {
+                    slug: "work-1".to_string(),
+                    title: "作品1".to_string(),
+                    thumbnail: None,
+                }],
+            ),
+        )
         .unwrap();
         assert!(!html.contains("work-thumbnail"));
     }
 
     #[test]
     fn includes_all_works_preserving_input_order() {
-        let html = render_tag_page(&entry(
-            "illustration",
-            "イラスト",
-            vec![
-                TagPageWork {
-                    slug: "work-2".to_string(),
-                    title: "2番目".to_string(),
-                    thumbnail: None,
-                },
-                TagPageWork {
-                    slug: "work-1".to_string(),
-                    title: "1番目".to_string(),
-                    thumbnail: None,
-                },
-            ],
-        ))
+        let tera = build_tera().unwrap();
+        let html = render_tag_page(
+            &tera,
+            &entry(
+                "illustration",
+                "イラスト",
+                vec![
+                    TagPageWork {
+                        slug: "work-2".to_string(),
+                        title: "2番目".to_string(),
+                        thumbnail: None,
+                    },
+                    TagPageWork {
+                        slug: "work-1".to_string(),
+                        title: "1番目".to_string(),
+                        thumbnail: None,
+                    },
+                ],
+            ),
+        )
         .unwrap();
         let pos_2 = html.find("works/work-2/").unwrap();
         let pos_1 = html.find("works/work-1/").unwrap();
@@ -183,21 +208,47 @@ mod tests {
 
     #[test]
     fn escapes_special_characters_in_title_and_name() {
-        let html = render_tag_page(&entry(
-            "special",
-            "<script>タグ</script>",
-            vec![TagPageWork {
-                slug: "work-1".to_string(),
-                title: "<b>強調</b> & \"quote\"".to_string(),
-                thumbnail: None,
-            }],
-        ))
+        let tera = build_tera().unwrap();
+        let html = render_tag_page(
+            &tera,
+            &entry(
+                "special",
+                "<script>タグ</script>",
+                vec![TagPageWork {
+                    slug: "work-1".to_string(),
+                    title: "<b>強調</b> & \"quote\"".to_string(),
+                    thumbnail: None,
+                }],
+            ),
+        )
         .unwrap();
         assert!(!html.contains("<script>タグ</script>"));
         assert!(!html.contains("<b>強調</b>"));
         // Tera の自動エスケープは `/` も `&#x2F;` にエスケープする。
         assert!(html.contains("&lt;script&gt;タグ&lt;&#x2F;script&gt;"));
         assert!(html.contains("&lt;b&gt;強調&lt;&#x2F;b&gt; &amp; &quot;quote&quot;"));
+    }
+
+    #[test]
+    fn escapes_special_characters_in_thumbnail_and_slug() {
+        let tera = build_tera().unwrap();
+        let html = render_tag_page(
+            &tera,
+            &entry(
+                "illustration",
+                "イラスト",
+                vec![TagPageWork {
+                    slug: "foo\"><script>alert(1)</script>".to_string(),
+                    title: "作品1".to_string(),
+                    thumbnail: Some("x\" onerror=\"alert(1)".to_string()),
+                }],
+            ),
+        )
+        .unwrap();
+        assert!(!html.contains("<script>alert(1)</script>"));
+        assert!(!html.contains(r#"" onerror="alert(1)"#));
+        assert!(html.contains("&quot;&gt;&lt;script&gt;alert(1)&lt;&#x2F;script&gt;"));
+        assert!(html.contains("x&quot; onerror=&quot;alert(1)"));
     }
 
     #[test]
