@@ -1303,6 +1303,7 @@ dependencies = [
  "serde",
  "serde_json",
  "tempfile",
+ "tera",
  "topcoat-db",
  "topcoat-render",
 ]
@@ -1322,6 +1323,8 @@ name = "topcoat-render"
 version = "0.1.0"
 dependencies = [
  "resvg",
+ "serde",
+ "serde_json",
  "tera",
  "tiny-skia",
  "usvg",

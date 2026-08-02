@@ -1,16 +1,23 @@
 //! `topcoat build` のビルドパイプライン。
 //!
 //! マイグレーション適用 → topcoat-db 経由の Work/Tag/Series/Version 取得 → Tera による
-//! レンダリング → feed/sitemap 生成 → OG 画像生成 → `dist/` 配下への書き出し、までの
-//! 一連の処理を [`run`] に配線している。
+//! レンダリング → feed/sitemap/search-index 生成 → 作品詳細静的ページ生成 → OG 画像生成 →
+//! `dist/` 配下への書き出し、までの一連の処理を [`run`] に配線している。
 //!
 //! Work/Tag/Series/Version の実テーブル定義は #6 (Work テーブル) / #9 (タグ別一覧) /
 //! #10 (シリーズ別一覧) が未マージのため、[`fetch_site_data`] は現時点では空データを
 //! 返すプレースホルダになっている。上記 issue のマージ後は、Diesel 経由の実データ取得
 //! 処理に差し替える。
+//!
+//! [`write_feeds_and_sitemap`] (feed/sitemap/search-index 生成) に加え、
+//! [`write_work_detail_pages`] (作品詳細静的ページ `dist/works/<slug>/index.html` 生成) も
+//! 同様の入口として提供する。
 
 pub mod feed;
+pub mod search_index;
+pub mod series;
 pub mod sitemap;
+pub mod work_detail;
 
 use std::fs;
 use std::io;
@@ -18,12 +25,15 @@ use std::path::{Path, PathBuf};
 
 use crate::models::{Series, Tag, Version, Work};
 use feed::{generate_json_feed, generate_rss, FeedMeta, FeedWork};
+use search_index::{generate_search_index, SearchIndexEntry};
+pub use series::write_series_pages;
 use sitemap::{
     generate_sitemap, SitemapInput, SitemapSeriesEntry, SitemapTagEntry, SitemapWorkEntry,
 };
 use topcoat_render::OgWork;
+pub use work_detail::write_work_detail_pages;
 
-/// `topcoat build` が feed/sitemap/ページ生成に必要とする全データ。
+/// `topcoat build` が feed/sitemap/search-index/ページ生成に必要とする全データ。
 ///
 /// `works` は新着順 (`created_at` 降順) に並んでいる前提。
 #[derive(Debug, Clone, Default)]
@@ -49,8 +59,8 @@ pub struct BuildConfig {
 }
 
 /// マイグレーション適用 → (プレースホルダの) Work/Tag/Series/Version 取得 → レンダリング →
-/// feed/sitemap 生成 → OG 画像生成 → `dist_dir` 配下への書き出し、までの一連のビルド
-/// パイプラインを実行する。
+/// feed/sitemap/search-index 生成 → シリーズ別一覧ページ生成 → 作品詳細静的ページ生成 →
+/// OG 画像生成 → `dist_dir` 配下への書き出し、までの一連のビルドパイプラインを実行する。
 pub fn run(dist_dir: &Path, config: &BuildConfig) -> io::Result<()> {
     apply_migrations(&config.db_path).map_err(io::Error::other)?;
 
@@ -68,6 +78,11 @@ pub fn run(dist_dir: &Path, config: &BuildConfig) -> io::Result<()> {
         &config.site_description,
         &data,
     )?;
+
+    write_series_pages(dist_dir, &data.works, &data.series)?;
+
+    let tera = topcoat_render::build_tera().map_err(io::Error::other)?;
+    write_work_detail_pages(dist_dir, &tera, &data.works)?;
 
     write_og_images(dist_dir, &data)
 }
@@ -88,7 +103,8 @@ fn fetch_site_data() -> SiteData {
     SiteData::default()
 }
 
-/// `dist/feed.xml` / `dist/feed.json` / `dist/sitemap.xml` を `dist_dir` 配下に書き出す。
+/// `dist/feed.xml` / `dist/feed.json` / `dist/sitemap.xml` / `dist/search-index.json` を
+/// `dist_dir` 配下に書き出す。
 ///
 /// `site_title` / `site_description` / `base_url` はサイト全体の設定値であり、
 /// 呼び出し側 (`main.rs`) が一元的に管理する。
@@ -149,9 +165,23 @@ pub fn write_feeds_and_sitemap(
     };
     let sitemap_xml = generate_sitemap(&sitemap_input);
 
+    let search_index_entries: Vec<SearchIndexEntry> = data
+        .works
+        .iter()
+        .map(|work| SearchIndexEntry {
+            slug: work.slug.clone(),
+            title: work.title.clone(),
+            description: work.description.clone(),
+            tags: work.tags.iter().map(|tag| tag.name.clone()).collect(),
+            series: work.series.as_ref().map(|series| series.name.clone()),
+        })
+        .collect();
+    let search_index_json = generate_search_index(&search_index_entries);
+
     fs::write(dist_dir.join("feed.xml"), rss_xml)?;
     fs::write(dist_dir.join("feed.json"), json_feed)?;
     fs::write(dist_dir.join("sitemap.xml"), sitemap_xml)?;
+    fs::write(dist_dir.join("search-index.json"), search_index_json)?;
 
     Ok(())
 }
