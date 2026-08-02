@@ -1,10 +1,15 @@
 //! `topcoat-db` — `topcoat` の DB スキーマ・エンティティ・ORM アクセスを担うライブラリ crate。
 //!
-//! 本 issue（#4: SQLite + Diesel ORM 導入とマイグレーション基盤構築）では、SQLite
+//! issue #4（SQLite + Diesel ORM 導入とマイグレーション基盤構築）で、SQLite
 //! （ファイルベース、ビルド時のみ読み書き）への接続確立と `diesel_migrations` による
-//! マイグレーション自動適用の疎通確認までをスコープとする。
-//! Work/Tag 等の実テーブル定義・エンティティ実装は後続 issue（#6 等）で行う。
+//! マイグレーション自動適用の疎通確認を行った。
+//!
+//! `works` / `tags` / `work_tags` テーブルは、issue #7（関連作品算出ロジック実装）が
+//! 依存する範囲に限定した暫定スキーマとして先行作成している（本来は issue #6・#2 で
+//! 正式に定義される想定。詳細は各マイグレーションのコメントおよび [`queries::related`]
+//! を参照）。#6・#2 マージ後は、カラム構成の差分を追加マイグレーションで揃えること。
 
+pub mod queries;
 pub mod schema;
 
 use std::fs;
@@ -63,8 +68,8 @@ pub fn establish_connection_at(db_path: &Path) -> ConnectionResult<SqliteConnect
 /// 埋め込まれたマイグレーション（`MIGRATIONS`）を DB に適用する。
 ///
 /// 未適用のマイグレーションのみが適用されるため、複数回呼び出しても安全（冪等）。
-/// 本 issue時点ではマイグレーションファイル自体が存在しない（テーブル未定義）ため、
-/// 実質的には「マイグレーション管理テーブルの初期化のみ行われて即座に成功する」動作になる。
+/// `works` / `tags` / `work_tags` / `related_works` の4テーブルを作成するマイグレーションが
+/// 含まれる（詳細はモジュール冒頭のドキュメントおよび各マイグレーションのコメントを参照）。
 pub fn run_migrations(
     connection: &mut SqliteConnection,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>> {
