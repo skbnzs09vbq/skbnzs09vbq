@@ -50,7 +50,7 @@ fn run_build() -> ExitCode {
     match build::run(Path::new("dist"), &config) {
         Ok(()) => {
             println!(
-                "wrote dist/index.html, dist/feed.xml, dist/feed.json, dist/sitemap.xml, dist/search-index.json, dist/series/<slug>/index.html, dist/works/<slug>/index.html, dist/works/<slug>/og.png, dist/tags/<slug>/index.html"
+                "wrote dist/index.html, dist/feed.xml, dist/feed.json, dist/sitemap.xml, dist/search-index.json, dist/series/<slug>/index.html, dist/works/<slug>/index.html, dist/works/<slug>/og.png, dist/tags/<slug>/index.html, dist/assets/"
             );
             ExitCode::SUCCESS
         }

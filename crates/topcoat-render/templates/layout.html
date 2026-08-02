@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="ja" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}{{ site_title }}{% endblock %}</title>
+  <meta name="description" content="{% block description %}{{ site_description }}{% endblock %}">
+
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="{% block og_title %}{{ site_title }}{% endblock %}">
+  <meta property="og:description" content="{% block og_description %}{{ site_description }}{% endblock %}">
+  <meta property="og:url" content="{% block og_url %}{{ base_url }}/{% endblock %}">
+  <meta property="og:image" content="{% block og_image %}{{ base_url }}/og.png{% endblock %}">
+  <meta name="twitter:card" content="summary_large_image">
+
+  <link rel="stylesheet" href="/assets/css/tokens.css">
+  {% block head_extra %}{% endblock %}
+</head>
+<body>
+  <header class="site-header">
+    <nav class="site-nav">
+      <a class="site-nav__brand" href="/">{{ site_title }}</a>
+      <ul class="site-nav__links">
+        <li><a href="/tags/">Tags</a></li>
+        <li><a href="/series/">Series</a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <main class="site-main">
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="site-footer">
+    <p>&copy; {{ current_year }} {{ site_title }}</p>
+  </footer>
+</body>
+</html>

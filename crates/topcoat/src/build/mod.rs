@@ -2,6 +2,7 @@
 //!
 //! マイグレーション適用 → topcoat-db 経由の Work/Tag/Series/Version 取得 → Tera による
 //! レンダリング → feed/sitemap/search-index 生成 → 作品詳細静的ページ生成 → OG 画像生成 →
+//! 静的アセット (`assets/` → `dist/assets/`, issue #30) コピー →
 //! `dist/` 配下への書き出し、までの一連の処理を [`run`] に配線している。
 //!
 //! 後続 issue のマージ後にやること:
@@ -21,6 +22,7 @@
 //! [`write_work_detail_pages`] (作品詳細静的ページ `dist/works/<slug>/index.html` 生成) も
 //! 同様の入口として提供する。
 
+pub mod assets;
 pub mod feed;
 pub mod search_index;
 pub mod series;
@@ -96,7 +98,9 @@ pub fn run(dist_dir: &Path, config: &BuildConfig) -> io::Result<()> {
     let tera = topcoat_render::build_tera().map_err(io::Error::other)?;
     write_work_detail_pages(dist_dir, &tera, &data.works)?;
 
-    write_og_images(dist_dir, &data)
+    write_og_images(dist_dir, &data)?;
+
+    assets::write_assets(dist_dir)
 }
 
 /// `db_path` の SQLite ファイルへの接続を確立し、埋め込みマイグレーションを適用する。
