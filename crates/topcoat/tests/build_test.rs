@@ -30,6 +30,7 @@ fn run_with_empty_data_writes_expected_output_and_is_idempotent() {
     assert!(dist_dir.path().join("feed.xml").is_file());
     assert!(dist_dir.path().join("feed.json").is_file());
     assert!(dist_dir.path().join("sitemap.xml").is_file());
+    assert!(dist_dir.path().join("assets/css/tokens.css").is_file());
 
     let index_html = std::fs::read_to_string(dist_dir.path().join("index.html"))
         .expect("dist/index.html の読み込みに失敗しました");

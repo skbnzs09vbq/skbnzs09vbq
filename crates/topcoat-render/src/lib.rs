@@ -5,17 +5,25 @@
 //! ([`og_image`] / [`raster`] / [`svg_template`]) を提供する。
 //! `topcoat` 側の `xml_writer` (XML エスケープ処理) には依存しない設計とする
 //! (SVG 用のエスケープ処理は [`svg_template`] 内に小さく独立実装している)。
+//!
+//! issue #30 (フロントエンド基盤) により、header/nav/footer/OGP メタを含む
+//! 全ページ共通のベースレイアウトを [`layout`] (Askama) として追加した。
+//! 既存の index/work_detail ページは Tera のままであり、[`layout`] はそれらを
+//! 置き換えるものではなく、以降のフロントエンド系 issue がこのレイアウトを
+//! 継承していくための土台として導入している。
 
 use std::fmt;
 use std::path::PathBuf;
 
 use tera::{Context, Tera};
 
+pub mod layout;
 pub mod og_image;
 pub mod raster;
 pub mod svg_template;
 pub mod work_detail;
 
+pub use layout::BaseLayout;
 pub use og_image::{generate_og_image, write_og_images, OgWork};
 pub use raster::{rasterize_svg, RenderError as RasterError};
 pub use svg_template::build_og_svg;
