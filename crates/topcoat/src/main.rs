@@ -10,9 +10,7 @@ use std::path::Path;
 use std::process::ExitCode;
 
 use topcoat::build::series::write_series_pages;
-use topcoat::build::{
-    write_feeds_and_sitemap, write_og_images, write_work_detail_pages, SiteData,
-};
+use topcoat::build::{write_feeds_and_sitemap, write_og_images, write_work_detail_pages, SiteData};
 
 /// サイトのベース URL。
 ///

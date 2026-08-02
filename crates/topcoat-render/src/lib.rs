@@ -10,34 +10,32 @@ pub mod raster;
 pub mod svg_template;
 pub mod work_detail;
 
-use std::path::PathBuf;
-
 use tera::Tera;
 
 pub use og_image::{generate_og_image, write_og_images, OgWork};
 pub use raster::{rasterize_svg, RenderError};
 pub use svg_template::build_og_svg;
 
-/// `templates/**/*.tera` をロードした [`Tera`] インスタンスを構築する。
-///
-/// `CARGO_MANIFEST_DIR` (このクレートのルート) 基準でテンプレートディレクトリを解決するため、
-/// 呼び出し側のカレントディレクトリに依存せず動作する。
-pub fn build_tera() -> tera::Result<Tera> {
-    let mut templates_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    templates_dir.push("templates");
-    templates_dir.push("**");
-    templates_dir.push("*.tera");
+const WORK_DETAIL_TEMPLATE: &str = include_str!("../templates/work_detail.html.tera");
+const WORK_DETAIL_TEMPLATE_NAME: &str = "work_detail.html.tera";
 
-    let mut tera = Tera::new(
-        templates_dir
-            .to_str()
-            .expect("CARGO_MANIFEST_DIR should be valid UTF-8"),
-    )?;
+/// [`WORK_DETAIL_TEMPLATE`] を登録した [`Tera`] インスタンスを構築する。
+///
+/// テンプレートはビルド時に [`include_str!`] でバイナリへ埋め込む。
+/// `crates/topcoat/src/build/series.rs` の `series_tera()` と同様の方針
+/// (ディレクトリ glob 方式 (`Tera::new("templates/**/*")`) を採らない) で、
+/// ビルドしたマシン・ディレクトリと異なる環境でバイナリを実行しても、実行時
+/// カレントディレクトリや `CARGO_MANIFEST_DIR` の絶対パスに依存せず、テンプレート
+/// ファイルの配置漏れによる実行時エラーを避けるため。
+pub fn build_tera() -> tera::Result<Tera> {
+    let mut tera = Tera::default();
 
     // テンプレートファイル名の拡張子が `.tera` (例: `work_detail.html.tera`) であり、
     // Tera のデフォルト自動エスケープ判定 (`.html` / `.htm` / `.xml` 終端) の対象外となるため、
     // `.tera` 終端のテンプレートを明示的に自動エスケープ対象にする。
     tera.autoescape_on(vec![".tera"]);
+
+    tera.add_raw_template(WORK_DETAIL_TEMPLATE_NAME, WORK_DETAIL_TEMPLATE)?;
 
     Ok(tera)
 }
