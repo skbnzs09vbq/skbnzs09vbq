@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>{{ tag.name }} の作品一覧</title>
+</head>
+<body>
+<h1>{{ tag.name }}</h1>
+<ul class="work-list">
+{% for work in works %}
+<li class="work-item">
+{% if work.thumbnail %}<img class="work-thumbnail" src="{{ work.thumbnail }}" alt="{{ work.title }}">{% endif %}
+<a class="work-link" href="/works/{{ work.slug }}/">{{ work.title }}</a>
+</li>
+{% endfor %}
+</ul>
+</body>
+</html>

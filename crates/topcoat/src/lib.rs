@@ -11,6 +11,10 @@
 //! Diesel モデルに差し替える想定。同様に [`build::run`] が行う Work/Tag/Series/Version
 //! の全件取得も、現時点では topcoat-db に実テーブルが無いため空データを返すプレースホルダ
 //! 実装になっている。
+//!
+//! 追記 (issue #9 時点): タグ別一覧ページ生成 (`dist/tags/<slug>/index.html`) は
+//! [`build::tags`] として実装済み。#2 (Tag⇔Work 多対多)・#6・#11 は依然未マージのため、
+//! 上記の「暫定モデル/差し替え想定」は変わらず有効。
 
 pub mod build;
 pub mod models;

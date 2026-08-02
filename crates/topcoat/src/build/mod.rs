@@ -4,10 +4,18 @@
 //! レンダリング → feed/sitemap/search-index 生成 → 作品詳細静的ページ生成 → OG 画像生成 →
 //! `dist/` 配下への書き出し、までの一連の処理を [`run`] に配線している。
 //!
-//! Work/Tag/Series/Version の実テーブル定義は #6 (Work テーブル) / #9 (タグ別一覧) /
-//! #10 (シリーズ別一覧) が未マージのため、[`fetch_site_data`] は現時点では空データを
-//! 返すプレースホルダになっている。上記 issue のマージ後は、Diesel 経由の実データ取得
-//! 処理に差し替える。
+//! 後続 issue のマージ後にやること:
+//! - [`SiteData`] を Diesel 経由の実データ取得結果から構築する処理に差し替える
+//! - `main.rs` 側のプレースホルダ (`SiteData::default()` 相当) を実データ取得呼び出しに差し替える
+//!
+//! Work/Tag/Series/Version の実テーブル定義は #6 (Work テーブル) / #10 (シリーズ別一覧) が
+//! 未マージのため、[`fetch_site_data`] は現時点では空データを返すプレースホルダになっている。
+//! 上記 issue のマージ後は、Diesel 経由の実データ取得処理に差し替える。
+//!
+//! 追記 (issue #9 時点): タグ別一覧ページ生成 (`dist/tags/<slug>/index.html`) は
+//! 本 issue で [`tags`] モジュールとして実装済み。ただし #2 (Tag⇔Work 多対多)・
+//! #6 (Work テーブル) が未マージのため、[`crate::models::Work`] に暫定的に
+//! `thumbnail` フィールドを追加して対応している。
 //!
 //! [`write_feeds_and_sitemap`] (feed/sitemap/search-index 生成) に加え、
 //! [`write_work_detail_pages`] (作品詳細静的ページ `dist/works/<slug>/index.html` 生成) も
@@ -17,6 +25,7 @@ pub mod feed;
 pub mod search_index;
 pub mod series;
 pub mod sitemap;
+pub mod tags;
 pub mod work_detail;
 
 use std::fs;
@@ -30,6 +39,7 @@ pub use series::write_series_pages;
 use sitemap::{
     generate_sitemap, SitemapInput, SitemapSeriesEntry, SitemapTagEntry, SitemapWorkEntry,
 };
+use tags::{TagPageEntry, TagPageWork};
 use topcoat_render::OgWork;
 pub use work_detail::write_work_detail_pages;
 
@@ -59,8 +69,9 @@ pub struct BuildConfig {
 }
 
 /// マイグレーション適用 → (プレースホルダの) Work/Tag/Series/Version 取得 → レンダリング →
-/// feed/sitemap/search-index 生成 → シリーズ別一覧ページ生成 → 作品詳細静的ページ生成 →
-/// OG 画像生成 → `dist_dir` 配下への書き出し、までの一連のビルドパイプラインを実行する。
+/// feed/sitemap/search-index 生成 → シリーズ別一覧ページ生成 → タグ別一覧ページ生成 →
+/// 作品詳細静的ページ生成 → OG 画像生成 → `dist_dir` 配下への書き出し、までの一連の
+/// ビルドパイプラインを実行する。
 pub fn run(dist_dir: &Path, config: &BuildConfig) -> io::Result<()> {
     apply_migrations(&config.db_path).map_err(io::Error::other)?;
 
@@ -80,6 +91,7 @@ pub fn run(dist_dir: &Path, config: &BuildConfig) -> io::Result<()> {
     )?;
 
     write_series_pages(dist_dir, &data.works, &data.series)?;
+    write_tag_pages(dist_dir, &data)?;
 
     let tera = topcoat_render::build_tera().map_err(io::Error::other)?;
     write_work_detail_pages(dist_dir, &tera, &data.works)?;
@@ -203,4 +215,36 @@ pub fn write_og_images(dist_dir: &Path, data: &SiteData) -> io::Result<()> {
     topcoat_render::write_og_images(dist_dir, &og_works)?;
 
     Ok(())
+}
+
+/// `dist/tags/<slug>/index.html` を Tag ごとに `dist_dir` 配下に書き出す。
+///
+/// 各タグには、そのタグが付与された Work のみが一覧として渡される
+/// (`data.works` の各要素が持つ [`Work::tags`] を見てフィルタする)。
+/// `works` の並び順は `data.works` の並び順をそのまま保持する。
+pub fn write_tag_pages(dist_dir: &Path, data: &SiteData) -> io::Result<()> {
+    let entries: Vec<TagPageEntry> = data
+        .tags
+        .iter()
+        .map(|tag| {
+            let works = data
+                .works
+                .iter()
+                .filter(|work| work.tags.iter().any(|work_tag| work_tag.slug == tag.slug))
+                .map(|work| TagPageWork {
+                    slug: work.slug.clone(),
+                    title: work.title.clone(),
+                    thumbnail: work.thumbnail.clone(),
+                })
+                .collect();
+
+            TagPageEntry {
+                slug: tag.slug.clone(),
+                name: tag.name.clone(),
+                works,
+            }
+        })
+        .collect();
+
+    tags::write_tag_pages(dist_dir, &entries)
 }

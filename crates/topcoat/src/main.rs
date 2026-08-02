@@ -1,7 +1,7 @@
 //! `topcoat` — 自作 SSG (Static Site Generator) の CLI エントリーポイント。
 //!
 //! `build` サブコマンドは [`topcoat::build::run`] にマイグレーション適用 → データ取得 →
-//! レンダリング → feed/sitemap/search-index 生成 → シリーズ別一覧・作品詳細ページ生成 →
+//! レンダリング → feed/sitemap/search-index 生成 → タグ別・シリーズ別一覧・作品詳細ページ生成 →
 //! OG 画像生成、までの一連のビルドパイプラインを配線している。
 
 use std::path::Path;
@@ -50,7 +50,7 @@ fn run_build() -> ExitCode {
     match build::run(Path::new("dist"), &config) {
         Ok(()) => {
             println!(
-                "wrote dist/index.html, dist/feed.xml, dist/feed.json, dist/sitemap.xml, dist/search-index.json, dist/series/<slug>/index.html, dist/works/<slug>/index.html, dist/works/<slug>/og.png"
+                "wrote dist/index.html, dist/feed.xml, dist/feed.json, dist/sitemap.xml, dist/search-index.json, dist/series/<slug>/index.html, dist/works/<slug>/index.html, dist/works/<slug>/og.png, dist/tags/<slug>/index.html"
             );
             ExitCode::SUCCESS
         }
