@@ -1,7 +1,8 @@
--- 暫定実装: 本来この `tags` テーブルは issue #2（Tagエンティティと Work-Tag 多対多
--- リレーション実装）で追加される想定だが、2026-08-02 時点で #2 が未マージのため、
+-- `tags` テーブル: Work との多対多リレーションを表す Tag エンティティ本体。
 -- issue #7（関連作品算出ロジック）の実装・検証に必要な範囲に限定した暫定版として
--- 本マイグレーションで先行作成する。
+-- issue #2 未マージの間に先行作成されたが、issue #2（Tagエンティティと Work-Tag
+-- 多対多リレーション実装）でカラム構成の変更なく正式実装として引き継がれた
+-- （Diesel モデル・クエリ関数は `crate::models::tag`・`crate::queries::tag` を参照）。
 CREATE TABLE tags (
     id INTEGER PRIMARY KEY NOT NULL,
     name TEXT NOT NULL,

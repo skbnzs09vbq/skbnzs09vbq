@@ -57,10 +57,4 @@ diesel::joinable!(versions -> works (work_id));
 diesel::joinable!(work_tags -> tags (tag_id));
 diesel::joinable!(work_tags -> works (work_id));
 
-diesel::allow_tables_to_appear_in_same_query!(
-    related_works,
-    tags,
-    versions,
-    work_tags,
-    works,
-);
+diesel::allow_tables_to_appear_in_same_query!(related_works, tags, versions, work_tags, works,);
