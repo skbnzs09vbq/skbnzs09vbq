@@ -14,3 +14,9 @@ path = "src/main.rs"
 [dependencies]
 serde = { workspace = true }
 serde_json = { workspace = true }
+tera = { workspace = true }
+topcoat-db = { workspace = true }
+topcoat-render = { workspace = true }
+
+[dev-dependencies]
+tempfile = { workspace = true }
