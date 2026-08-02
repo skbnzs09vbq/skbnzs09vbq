@@ -30,8 +30,8 @@ use search_index::{generate_search_index, SearchIndexEntry};
 use sitemap::{
     generate_sitemap, SitemapInput, SitemapSeriesEntry, SitemapTagEntry, SitemapWorkEntry,
 };
-pub use work_detail::write_work_detail_pages;
 use topcoat_render::OgWork;
+pub use work_detail::write_work_detail_pages;
 
 /// `topcoat build` が feed/sitemap/search-index 生成に必要とする全データ。
 ///

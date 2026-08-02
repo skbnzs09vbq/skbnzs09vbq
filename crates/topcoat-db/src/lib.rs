@@ -5,6 +5,7 @@
 //! マイグレーション自動適用の疎通確認までをスコープとする。
 //! Work/Tag 等の実テーブル定義・エンティティ実装は後続 issue（#6 等）で行う。
 
+pub mod models;
 pub mod schema;
 
 use std::fs;
