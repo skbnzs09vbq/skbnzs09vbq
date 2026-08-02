@@ -4,32 +4,46 @@
 //! `tempfile` で払い出した一意な一時パスへ接続する（固定パスを共有すると SQLite の
 //! 書き込みロック競合で間欠的に失敗するため）。
 
-use diesel::connection::SimpleConnection;
+use chrono::NaiveDate;
 use diesel::prelude::*;
-use tempfile::NamedTempFile;
+use topcoat_db::models::work::{generate_slug, Work};
 use topcoat_db::models::{NewVersion, Version};
-use topcoat_db::schema::versions;
+use topcoat_db::schema::{versions, works};
 
-/// `works` テーブルは別 issue（#6）で追加される。`topcoat_db::establish_connection_at`
-/// が接続確立時に `PRAGMA foreign_keys = ON;` を発行するため、`versions.work_id` の
-/// FOREIGN KEY 制約を満たすテスト用の最小限のスタブテーブルを用意する。
-fn seed_stub_works_table(connection: &mut SqliteConnection) {
-    connection
-        .batch_execute(
-            "CREATE TABLE works (id INTEGER NOT NULL PRIMARY KEY);
-             INSERT INTO works (id) VALUES (1), (2);",
-        )
-        .expect("works テーブル（スタブ）の準備に失敗しました");
+mod common;
+
+/// `versions.work_id` の FOREIGN KEY 制約（`establish_connection_at` が接続確立時に
+/// `PRAGMA foreign_keys = ON;` を発行するため強制される）を満たすため、実際の
+/// `works` テーブルに参照先レコードを insert する。
+fn seed_works(connection: &mut SqliteConnection, ids: &[i32]) {
+    let now = NaiveDate::from_ymd_opt(2026, 1, 1)
+        .expect("有効な日付です")
+        .and_hms_opt(0, 0, 0)
+        .expect("有効な時刻です");
+
+    for &id in ids {
+        let title = format!("Work {id}");
+        diesel::insert_into(works::table)
+            .values(&Work {
+                id,
+                title: title.clone(),
+                slug: generate_slug(&title),
+                description: None,
+                series_id: None,
+                created_at: now,
+                updated_at: now,
+                thumbnail: None,
+                params: None,
+            })
+            .execute(connection)
+            .expect("works テーブルへのシードデータ投入に失敗しました");
+    }
 }
 
 #[test]
 fn for_work_returns_only_matching_work_id_in_chronological_order() {
-    let db_file = NamedTempFile::new().expect("一時 DB ファイルの作成に失敗しました");
-
-    let mut connection = topcoat_db::establish_connection_at(db_file.path())
-        .expect("SQLite への接続確立に失敗しました");
-    topcoat_db::run_migrations(&mut connection).expect("マイグレーションの適用に失敗しました");
-    seed_stub_works_table(&mut connection);
+    let (_db_file, mut connection) = common::setup_connection();
+    seed_works(&mut connection, &[1, 2]);
 
     // work_id=1 に対し、あえて "v2" → "v1" の順で挿入する。
     diesel::insert_into(versions::table)
@@ -74,11 +88,7 @@ fn for_work_returns_only_matching_work_id_in_chronological_order() {
 
 #[test]
 fn for_work_returns_empty_vec_when_no_versions_exist() {
-    let db_file = NamedTempFile::new().expect("一時 DB ファイルの作成に失敗しました");
-
-    let mut connection = topcoat_db::establish_connection_at(db_file.path())
-        .expect("SQLite への接続確立に失敗しました");
-    topcoat_db::run_migrations(&mut connection).expect("マイグレーションの適用に失敗しました");
+    let (_db_file, mut connection) = common::setup_connection();
 
     let result = Version::for_work(&mut connection, 999).expect("Version の取得に失敗しました");
 
